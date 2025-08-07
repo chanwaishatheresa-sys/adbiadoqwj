@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lucky Draw with Enhanced Features</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Roboto:wght@400;500&display=swap');
+
+        body {
+            margin: 0;
+            font-family: 'Roboto', sans-serif;
+            color: #F5F5F5;
+            background-color: #1C2526;
+            text-align: center;
+            overflow: hidden;
+        }
+
+        #video-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+        }
+
+        #video-container::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: -1;
+        }
+
+        #video-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1;
+            padding: 2rem;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            animation: fadeIn 1s ease-in;
+        }
+
+        #eventName {
+            font-family: 'Playfair Display', serif;
+            font-size: 3rem;
+            margin-bottom: 1.5rem;
+            padding: 0.5rem;
+            width: 80%;
+            max-width: 900px;
+            color: #FFD700;
+            text-align: center;
+            border-radius: 8px;
+        }
+
+        #prizeBanner {
+            font-family: 'Roboto', sans-serif;
+            font-size: 2.2rem;
+            color: #FFD700;
+            margin-bottom: 1.5rem;
+            min-height: 2.5rem;
+            animation: fadeIn 1s ease-in;
+        }
+
+        button {
+            font-family: 'Roboto', sans-serif;
+            font-size: 1.2rem;
+            padding: 0.8rem 1.5rem;
+            margin: 0.6rem;
+            cursor: pointer;
+            background: linear-gradient(45deg, #FFD700, #B8860B);
+            color: #1C2526;
+            border: none;
+            border-radius: 8px;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        #winners {
+            font-family: 'Roboto', sans-serif;
+            font-size: 2rem;
+            color: #F5F5F5;
+            margin-top: 2rem;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1.5rem;
+        }
+
+        .card {
+            width: 15vw;
+            height: 7.5vw;
+            min-width: 150px;
+            min-height: 75px;
+            perspective: 1000px;
+            transition: transform 0.3s;
+        }
+
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.8s;
+            transform-style: preserve-3d;
+        }
+
+        .card.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .card-front,
+        .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            font-size: 1.5rem;
+        }
+
+        .card-front {
+            background: linear-gradient(45deg, #FFD700, #B8860B);
+        }
+
+        .card-back {
+            background: linear-gradient(45deg, #1C2526, #4682B4);
+            transform: rotateY(180deg);
+            color: #F5F5F5;
+        }
+
+        .card:hover {
+            transform: scale(1.05);
+        }
+
+        #remainingInfo {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 1rem;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 0.75rem;
+            border-radius: 8px;
+            text-align: left;
+            max-width: 250px;
+        }
+
+        #confirmButton {
+            display: none;
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            font-size: 1rem;
+            padding: 0.6rem 1.2rem;
+            background: linear-gradient(45deg, #4682B4, #1C2526);
+            color: #F5F5F5;
+            border: none;
+            border-radius: 8px;
+        }
+
+        #menuButton {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 2;
+            font-size: 1.5rem;
+            background: rgba(255, 255, 255, 0.2);
+            color: #F5F5F5;
+            border: none;
+            padding: 0.5rem;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        #menuButton:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        #menu {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            background: rgba(28, 37, 38, 0.95);
+            border-radius: 8px;
+            display: none;
+            flex-direction: column;
+            z-index: 2;
+            padding: 12px;
+            width: 240px;
+            max-height: 60vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            transform: translateX(100%);
+            transition: transform 0.3s ease-in-out;
+        }
+
+        #menu.active {
+            transform: translateX(0);
+        }
+
+        #statusIndicator {
+            font-size: 1rem;
+            color: #FFD700;
+            padding: 8px 16px;
+            margin: 4px 0;
+            text-align: left;
+        }
+
+        .menu-item {
+            font-size: 1rem;
+            background: rgba(255, 255, 255, 0.15);
+            color: #F5F5F5;
+            border: none;
+            padding: 10px 16px;
+            width: 100%;
+            box-sizing: border-box;
+            text-align: left;
+            border-radius: 4px;
+            margin: 4px 0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            transition: background 0.3s;
+        }
+
+        .menu-item:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .menu-item input[type="file"] {
+            display: none;
+        }
+
+        #fileInput,
+        #prizeInput,
+        #logInput {
+            display: none;
+        }
+
+        #shuffleDisplay {
+            font-family: 'Roboto', sans-serif;
+            font-size: 2rem;
+            color: #FFD700;
+            margin-top: 2rem;
+            min-height: 100px;
+        }
+
+        #notification {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(70, 130, 180, 0.9);
+            color: #F5F5F5;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-size: 1.2rem;
+            display: none;
+            z-index: 3;
+        }
+
+        #historyPage,
+        #mainPage {
+            display: none;
+        }
+
+        #historyPage.active,
+        #mainPage.active {
+            display: block;
+        }
+
+        #historyContent {
+            margin: 30px;
+            text-align: left;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        #historyContent table {
+            width: 100%;
+            border-collapse: collapse;
+            color: #F5F5F5;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        #historyContent th,
+        #historyContent td {
+            border: 1px solid #F5F5F5;
+            padding: 10px;
+            text-align: left;
+        }
+
+        #historyContent th {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        #volumeControl {
+            display: flex;
+            align-items: center;
+            padding: 10px 16px;
+            margin: 4px 0;
+        }
+
+        #volumeControl input {
+            width: 100%;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 3rem;
+            }
+
+            #eventName {
+                font-size: 2rem;
+            }
+
+            #prizeBanner {
+                font-size: 1.5rem;
+            }
+
+            button {
+                font-size: 1rem;
+                padding: 0.6rem 1.2rem;
+            }
+
+            #confirmButton {
+                font-size: 0.8rem;
+                padding: 0.4rem 0.8rem;
+            }
+
+            .card {
+                width: 40vw;
+                height: 20vw;
+            }
+
+            .card-front,
+            .card-back {
+                font-size: 1rem;
+            }
+
+            #winners {
+                font-size: 1.5rem;
+            }
+
+            #shuffleDisplay {
+                font-size: 1.5rem;
+            }
+
+            #notification {
+                font-size: 1rem;
+            }
+
+            #remainingInfo {
+                font-size: 0.9rem;
+                max-width: 200px;
+            }
+
+            #menuButton {
+                width: 40px;
+                height: 40px;
+                font-size: 1.2rem;
+            }
+
+            #menu {
+                top: 70px;
+                right: 10px;
+                width: 200px;
+            }
+
+            #statusIndicator,
+            .menu-item {
+                font-size: 0.9rem;
+                padding: 8px 12px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <audio id="drumroll" src="drumroll.mp3" preload="auto"></audio>
+    <audio id="applause" src="applause.mp3" preload="auto"></audio>
+
+    <div id="video-container">
+        <video id="backgroundVideo" autoplay muted loop>
+            <source src="LuckyDraw.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+    </div>
+
+    <button id="menuButton" title="Open Menu" aria-label="Open menu">☰</button>
+    <div id="menu">
+        <div id="statusIndicator"></div>
+        <label class="menu-item" for="fileInput">📁 Upload Attendees</label>
+        <input type="file" id="fileInput" accept=".csv,.txt,.xlsx" onchange="handleFile(event)">
+        <label class="menu-item" for="prizeInput">🎁 Upload Prizes</label>
+        <input type="file" id="prizeInput" accept=".csv,.xlsx" onchange="handlePrizeFile(event)">
+        <label class="menu-item" for="logInput">📜 Upload Log</label>
+        <input type="file" id="logInput" accept=".json" onchange="handleLogFile(event)">
+        <button class="menu-item" onclick="downloadWinners()">⬇️ Download Winners</button>
+        <button class="menu-item" onclick="downloadRemaining()">📤 Download Remaining</button>
+        <button class="menu-item" onclick="downloadTemplates()">📋 Download Templates</button>
+        <button class="menu-item" onclick="saveLog()">💾 Save Log</button>
+        <button class="menu-item" onclick="showHistory()">📅 View History</button>
+        <button class="menu-item" onclick="changeEventName()">✏️ Change Event Name</button>
+        <button class="menu-item" onclick="confirmReset()">🗑️ Reset All</button>
+        <button id="soundToggle" class="menu-item" onclick="toggleSound()">🔊 Toggle Sound</button>
+        <div id="volumeControl" class="menu-item">
+            <span>🔉 Volume:</span>
+            <input type="range" id="volumeSlider" min="0" max="1" step="0.1" value="1" onchange="adjustVolume()">
+        </div>
+    </div>
+
+    <div id="mainPage" class="active">
+        <div class="overlay">
+            <h1 id="eventName">Annual Dinner Lucky Draw</h1>
+            <div id="prizeBanner"></div>
+            <div id="inputArea" class="active">
+                <button id="drawButton" onclick="startShuffle()" aria-label="Draw random winners" tabindex="0"
+                    disabled>Draw Winners</button>
+            </div>
+            <div id="shuffleDisplay"></div>
+            <div id="winners"></div>
+            <button id="confirmButton" onclick="confirmWinners()" aria-label="Confirm selected winners"
+                tabindex="0">Confirm Winners</button>
+        </div>
+        <div id="remainingInfo"></div>
+    </div>
+
+    <div id="historyPage">
+        <button class="menu-item" onclick="backToMain()">⬅ Back to Main</button>
+        <div id="historyContent"></div>
+    </div>
+
+    <div id="notification"></div>
+
+    <script>
+        let attendees = [];
+        let totalAttendees = 0;
+        let totalWinners = 0;
+        let drawn = [];
+        let currentWinners = [];
+        let actionLog = [];
+        let prizes = [];
+        let currentPrizeIndex = 0;
+        let shuffleInterval;
+        let isSoundEnabled = true;
+        let logFileHandle = null;
+        let isAttendeesLoaded = false;
+        let isPrizesLoaded = false;
+        const winnerVideo = "Congrat.mp4";
+        const idleVideo = "LuckyDraw.mp4";
+
+        function updateRemainingInfo() {
+            const remainingPrizes = prizes.length - currentPrizeIndex;
+            const remainingWinners = prizes.slice(currentPrizeIndex).reduce((sum, prize) => sum + prize.winners, 0);
+            let prizeDetails = [];
+            for (let i = currentPrizeIndex; i < prizes.length; i++) {
+                const { prize, winners } = prizes[i];
+                prizeDetails.push(`${prize}: ${winners} Winner${winners > 1 ? 's' : ''}`);
+            }
+            const remainingAttendees = totalWinners - drawn.length;
+            document.getElementById("remainingInfo").innerText =
+                `Remaining Winners: ${remainingWinners}\nAttendees Remaining: ${remainingAttendees}\n\nRemaining Prizes:\n${prizeDetails.join('\n')}`;
+            const inputArea = document.getElementById("inputArea");
+            const remainingInfo = document.getElementById("remainingInfo");
+            if (inputArea.classList.contains("active")) {
+                remainingInfo.style.display = "block";
+                console.log("Showing #remainingInfo: inputArea is active");
+            } else {
+                remainingInfo.style.display = "none";
+                console.log("Hiding #remainingInfo: inputArea is not active");
+            }
+        }
+
+        function updateStatusIndicator() {
+            const status = document.getElementById("statusIndicator");
+            const messages = [];
+            if (isAttendeesLoaded) {
+                messages.push(`Attendees: ${totalAttendees} loaded`);
+            } else {
+                messages.push("Attendees: Not loaded");
+            }
+            if (isPrizesLoaded) {
+                messages.push(`Prizes: ${prizes.length} loaded`);
+            } else {
+                messages.push("Prizes: Not loaded");
+            }
+            status.innerText = messages.join(" | ");
+        }
+
+        function updatePrizeBanner() {
+            const banner = document.getElementById("prizeBanner");
+            const drawButton = document.getElementById("drawButton");
+            if (currentPrizeIndex < prizes.length) {
+                const { prize, winners } = prizes[currentPrizeIndex];
+                banner.innerText = `${prize} (${winners} Winner${winners > 1 ? 's' : ''})`;
+                drawButton.disabled = !isAttendeesLoaded || !isPrizesLoaded || attendees.length === 0 || winners > attendees.length;
+            } else {
+                banner.innerText = prizes.length > 0 ? "All prizes awarded!" : "No prizes loaded.";
+                drawButton.disabled = true;
+            }
+        }
+
+        function playVideo(src, loop = false) {
+            const video = document.getElementById("backgroundVideo");
+            video.src = src;
+            video.loop = loop;
+            video.play().catch(error => {
+                console.error("Error playing video:", error);
+                showNotification("Error playing video. Check if video files exist.");
+            });
+        }
+
+        function adjustVolume() {
+            const volume = document.getElementById("volumeSlider").value;
+            document.getElementById("drumroll").volume = volume;
+            document.getElementById("applause").volume = volume;
+            logAction("adjustVolume", { volume });
+        }
+
+        function changeEventName() {
+            const newName = prompt("Enter new event name:", document.getElementById("eventName").innerText);
+            if (newName) {
+                document.getElementById("eventName").innerText = newName;
+                logAction("updateEventName", { name: newName });
+                showNotification("Event name updated!");
+            }
+            toggleMenu();
+        }
+
+        async function saveLog() {
+            if (actionLog.length === 0) {
+                showNotification("No actions logged yet.");
+                return;
+            }
+            try {
+                if (!logFileHandle && window.showSaveFilePicker) {
+                    logFileHandle = await window.showSaveFilePicker({
+                        suggestedName: 'log.json',
+                        types: [{ description: 'JSON Files', accept: { 'application/json': ['.json'] } }]
+                    });
+                }
+                if (logFileHandle) {
+                    const writable = await logFileHandle.createWritable();
+                    await writable.write(JSON.stringify(actionLog, null, 2));
+                    await writable.close();
+                    showNotification("Action log saved!");
+                } else {
+                    showNotification("File System Access API not available. Please save manually.");
+                }
+            } catch (error) {
+                console.error('Error saving log:', error);
+                showNotification("Error saving log. Please try again.");
+            }
+        }
+
+        function logAction(action, details) {
+            const timestamp = new Date().toLocaleString();
+            actionLog.push({ timestamp, action, details });
+            saveLog();
+        }
+
+        function updateSoundButton() {
+            document.getElementById("soundToggle").innerText = isSoundEnabled ? "🔊 Toggle Sound" : "🔇 Toggle Sound";
+        }
+
+        function toggleSound() {
+            isSoundEnabled = !isSoundEnabled;
+            updateSoundButton();
+            logAction("toggleSound", { soundEnabled: isSoundEnabled });
+        }
+
+        function showNotification(message) {
+            const notification = document.getElementById("notification");
+            notification.innerText = message;
+            notification.style.display = "block";
+            setTimeout(() => {
+                notification.style.display = "none";
+            }, 3000);
+        }
+
+        function toggleMenu() {
+            const menu = document.getElementById("menu");
+            if (menu.style.display === "flex") {
+                menu.classList.remove("active");
+                setTimeout(() => { menu.style.display = "none"; }, 300);
+            } else {
+                menu.style.display = "flex";
+                setTimeout(() => { menu.classList.add("active"); }, 10);
+            }
+        }
+
+        function showHistory() {
+            document.getElementById("mainPage").classList.remove("active");
+            document.getElementById("historyPage").classList.add("active");
+            document.getElementById("inputArea").classList.remove("active");
+            document.getElementById("remainingInfo").style.display = "none";
+            console.log("Hiding #remainingInfo: History page active");
+            const historyContent = document.getElementById("historyContent");
+            let html = "<h2>Draw History</h2>";
+            if (actionLog.length === 0) {
+                html += "<p>No draws recorded yet.</p>";
+            } else {
+                html += `
+                    <table>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Prize</th>
+                            <th>Winners</th>
+                        </tr>`;
+                actionLog.filter(log => log.action === "drawWinners").forEach(log => {
+                    html += `
+                        <tr>
+                            <td>${log.timestamp}</td>
+                            <td>${log.details.prize}</td>
+                            <td>${log.details.winners.join(", ")}</td>
+                        </tr>`;
+                });
+                html += "</table>";
+            }
+            historyContent.innerHTML = html;
+            toggleMenu();
+            logAction("viewHistory", {});
+        }
+
+        function backToMain() {
+            document.getElementById("historyPage").classList.remove("active");
+            document.getElementById("mainPage").classList.add("active");
+            document.getElementById("inputArea").classList.add("active");
+            updateRemainingInfo();
+            console.log("Showing #remainingInfo: Back to main page, inputArea active");
+            logAction("backToMain", {});
+        }
+
+        function confirmReset() {
+            if (confirm("Are you sure you want to reset all data? This cannot be undone.")) {
+                attendees = [];
+                totalAttendees = 0;
+                totalWinners = 0;
+                drawn = [];
+                currentWinners = [];
+                actionLog = [];
+                prizes = [];
+                currentPrizeIndex = 0;
+                logFileHandle = null;
+                isAttendeesLoaded = false;
+                isPrizesLoaded = false;
+                document.getElementById("eventName").innerText = "Annual Dinner Lucky Draw";
+                document.getElementById("inputArea").classList.add("active");
+                updateRemainingInfo();
+                updatePrizeBanner();
+                updateStatusIndicator();
+                document.getElementById("winners").innerHTML = "";
+                document.getElementById("confirmButton").style.display = "none";
+                document.getElementById("inputArea").style.display = "block";
+                document.getElementById("shuffleDisplay").style.display = "none";
+                playVideo(idleVideo, true);
+                showNotification("All data reset!");
+                console.log("Showing #remainingInfo: Reset completed, inputArea active");
+                logAction("resetAll", {});
+            }
+        }
+
+        function shuffleNames() {
+            if (attendees.length === 0) return "";
+            const randomIndex = Math.floor(Math.random() * attendees.length);
+            return `🎲 ${attendees[randomIndex]} 🎲`;
+        }
+
+        function startShuffle() {
+            if (currentPrizeIndex >= prizes.length) {
+                showNotification("All prizes have been awarded.");
+                return;
+            }
+            const { winners } = prizes[currentPrizeIndex];
+            if (attendees.length === 0) {
+                showNotification("All attendees have already been drawn.");
+                return;
+            }
+            if (winners > attendees.length) {
+                showNotification(`Only ${attendees.length} attendees remaining for ${winners} winners.`);
+                return;
+            }
+            if (isSoundEnabled) {
+                const drumroll = document.getElementById("drumroll");
+                drumroll.currentTime = 0;
+                drumroll.play().catch(error => {
+                    console.error("Error playing drumroll:", error);
+                    showNotification("Error playing sound. Check if audio files exist.");
+                });
+            }
+            const shuffleDisplay = document.getElementById("shuffleDisplay");
+            document.getElementById("winners").innerHTML = "";
+            document.getElementById("inputArea").style.display = "none";
+            document.getElementById("inputArea").classList.remove("active");
+            document.getElementById("remainingInfo").style.display = "none";
+            console.log("Hiding #remainingInfo: Shuffling started");
+            shuffleDisplay.style.display = "block";
+            shuffleInterval = setInterval(() => {
+                shuffleDisplay.innerHTML = shuffleNames();
+            }, 150);
+            setTimeout(() => {
+                clearInterval(shuffleInterval);
+                shuffleDisplay.style.display = "none";
+                drawWinners();
+            }, 3000);
+        }
+
+        function drawWinners() {
+            const { prize, winners, value } = prizes[currentPrizeIndex];
+            const shuffled = attendees.sort(() => 0.5 - Math.random());
+            const selected = shuffled.slice(0, winners);
+            currentWinners = selected;
+            attendees = attendees.filter(name => !selected.includes(name));
+            drawn.push(...selected.map(name => ({ name, prize, timestamp: new Date().toLocaleString() })));
+            updateRemainingInfo();
+            updatePrizeBanner();
+            updateStatusIndicator();
+            const winnersDiv = document.getElementById("winners");
+            winnersDiv.innerHTML = selected.map(name =>
+                `<div class="card" tabindex="0" role="region" aria-label="Winner: ${name}">
+                    <div class="card-inner">
+                        <div class="card-front"></div>
+                        <div class="card-back">🎉 ${name} 🎉</div>
+                    </div>
+                </div>`
+            ).join("");
+            const cards = document.querySelectorAll('.card');
+            cards.forEach((card, index) => {
+                setTimeout(() => {
+                    card.classList.add('flipped');
+                }, index * 300);
+            });
+            document.getElementById("confirmButton").style.display = "block";
+            document.getElementById("inputArea").style.display = "none";
+            document.getElementById("inputArea").classList.remove("active");
+            document.getElementById("remainingInfo").style.display = "none";
+            console.log("Hiding #remainingInfo: Winners displayed");
+            playVideo(winnerVideo, false);
+            if (isSoundEnabled) {
+                const applause = document.getElementById("applause");
+                confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
+                applause.currentTime = 0;
+                applause.play().catch(error => {
+                    console.error("Error playing applause:", error);
+                    showNotification("Error playing sound. Check if audio files exist.");
+                });
+            }
+            logAction("drawWinners", { prize, winners: selected, count: winners, value });
+            downloadWinners();
+            downloadRemaining();
+        }
+
+        function confirmWinners() {
+            currentWinners = [];
+            document.getElementById("winners").innerHTML = "";
+            document.getElementById("confirmButton").style.display = "none";
+            document.getElementById("inputArea").style.display = "block";
+            document.getElementById("inputArea").classList.add("active");
+            document.getElementById("shuffleDisplay").style.display = "none";
+            currentPrizeIndex++;
+            updatePrizeBanner();
+            updateStatusIndicator();
+            updateRemainingInfo();
+            playVideo(idleVideo, true);
+            console.log("Showing #remainingInfo: Confirm winners, inputArea active");
+            logAction("confirmWinners", {});
+        }
+
+        function handleFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (!['csv', 'txt', 'xlsx'].includes(ext)) {
+                showNotification("Invalid file format. Please upload a .txt, .csv, or .xlsx file.");
+                return;
+            }
+            if (file.size > 1024 * 1024) {
+                showNotification("File is too large. Maximum size is 1MB.");
+                return;
+            }
+            if (ext === 'xlsx') {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                    const names = rows[0][0].toLowerCase() === "name" ? rows.slice(1).map(row => row[0]) : rows.map(row => row[0]);
+                    processAttendees(names, file.name);
+                };
+                reader.onerror = function () {
+                    showNotification("Error reading attendee file. Please try again.");
+                };
+                reader.readAsArrayBuffer(file);
+            } else {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const lines = e.target.result.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+                    const names = lines[0].toLowerCase() === "name" ? lines.slice(1) : lines;
+                    processAttendees(names, file.name);
+                };
+                reader.onerror = function () {
+                    showNotification("Error reading attendee file. Please try again.");
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        function processAttendees(names, filename) {
+            if (names.length === 0) {
+                showNotification("No valid attendee names found in the file.");
+                return;
+            }
+            attendees = names.filter(Boolean);
+            totalAttendees = names.length;
+            drawn = [];
+            actionLog = [];
+            logFileHandle = null;
+            isAttendeesLoaded = true;
+            document.getElementById("inputArea").classList.add("active");
+            updateRemainingInfo();
+            updatePrizeBanner();
+            updateStatusIndicator();
+            console.log("Showing #remainingInfo: Attendees processed, inputArea active");
+            logAction("uploadAttendees", { file: filename, count: names.length, names });
+            showNotification(`Loaded ${attendees.length} attendees!`);
+        }
+
+        function handlePrizeFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (!['csv', 'xlsx'].includes(ext)) {
+                showNotification("Invalid file format. Please upload a .csv or .xlsx file.");
+                return;
+            }
+            if (file.size > 1024 * 1024) {
+                showNotification("File is too large. Maximum size is 1MB.");
+                return;
+            }
+            if (ext === 'xlsx') {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const rows = XLSX.utils.sheet_to_json(sheet, { header: ['prize', 'winners', 'value'] });
+                    processPrizes(rows, file.name);
+                };
+                reader.onerror = function () {
+                    showNotification("Error reading prize file. Please try again.");
+                };
+                reader.readAsArrayBuffer(file);
+            } else {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const lines = e.target.result.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+                    const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
+                    if (headers[0] !== "prize" || headers[1] !== "winners") {
+                        showNotification("Invalid CSV format. Expected headers: Prize,Winners,Value");
+                        return;
+                    }
+                    const rows = lines.slice(1).map(line => {
+                        const [prize, winners, value] = line.split(',').map(s => s.trim());
+                        return { prize, winners, value };
+                    });
+                    processPrizes(rows, file.name);
+                };
+                reader.onerror = function () {
+                    showNotification("Error reading prize file. Please try again.");
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        function processPrizes(rows, filename) {
+            prizes = rows.map(row => {
+                const winnerCount = parseInt(row.winners);
+                const prizeValue = row.value ? parseFloat(row.value) : null;
+                if (!row.prize || isNaN(winnerCount) || winnerCount < 1) {
+                    showNotification(`Invalid prize data: ${JSON.stringify(row)}`);
+                    return null;
+                }
+                return { prize: row.prize, winners: winnerCount, value: prizeValue };
+            }).filter(p => p !== null);
+            if (prizes.length === 0) {
+                showNotification("No valid prizes found in the file.");
+                prizes = [];
+                isPrizesLoaded = false;
+                return;
+            }
+            totalWinners = prizes.reduce((sum, prize) => sum + prize.winners, 0);
+            currentPrizeIndex = 0;
+            isPrizesLoaded = true;
+            document.getElementById("inputArea").classList.add("active");
+            updatePrizeBanner();
+            updateStatusIndicator();
+            updateRemainingInfo();
+            document.getElementById("drawButton").disabled = !isAttendeesLoaded || attendees.length === 0;
+            console.log("Showing #remainingInfo: Prizes processed, inputArea active");
+            logAction("uploadPrizes", { file: filename, count: prizes.length, prizes });
+            showNotification(`Loaded ${prizes.length} prizes!`);
+        }
+
+        function handleLogFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            if (!file.name.endsWith('.json')) {
+                showNotification("Invalid file format. Please upload a .json file.");
+                return;
+            }
+            if (file.size > 1024 * 1024) {
+                showNotification("File is too large. Maximum size is 1MB.");
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const log = JSON.parse(e.target.result);
+                    if (!Array.isArray(log)) {
+                        showNotification("Invalid log format. Expected an array of actions.");
+                        return;
+                    }
+                    actionLog = [];
+                    attendees = [];
+                    drawn = [];
+                    prizes = [];
+                    currentPrizeIndex = 0;
+                    totalAttendees = 0;
+                    totalWinners = 0;
+                    isAttendeesLoaded = false;
+                    isPrizesLoaded = false;
+                    for (const action of log) {
+                        if (action.action === "uploadAttendees" && action.details.names) {
+                            attendees = [...action.details.names];
+                            totalAttendees = action.details.count || attendees.length;
+                            isAttendeesLoaded = totalAttendees > 0;
+                            actionLog.push(action);
+                        } else if (action.action === "uploadPrizes" && action.details.prizes) {
+                            prizes = action.details.prizes.map(p => ({
+                                prize: p.prize,
+                                winners: parseInt(p.winners),
+                                value: p.value ? parseFloat(p.value) : null
+                            }));
+                            totalWinners = prizes.reduce((sum, prize) => sum + prize.winners, 0);
+                            isPrizesLoaded = prizes.length > 0;
+                            currentPrizeIndex = 0;
+                            actionLog.push(action);
+                        } else if (action.action === "drawWinners" && action.details.winners) {
+                            const winners = action.details.winners;
+                            drawn.push(...winners.map(name => ({
+                                name,
+                                prize: action.details.prize,
+                                timestamp: action.timestamp
+                            })));
+                            attendees = attendees.filter(name => !winners.includes(name));
+                            currentPrizeIndex++;
+                            actionLog.push(action);
+                        } else if (action.action === "confirmWinners" || action.action === "resetAll" ||
+                            action.action === "viewHistory" || action.action === "backToMain") {
+                            actionLog.push(action);
+                        } else if (action.action === "toggleSound") {
+                            isSoundEnabled = action.details.soundEnabled;
+                            updateSoundButton();
+                            actionLog.push(action);
+                        } else if (action.action === "adjustVolume") {
+                            document.getElementById("volumeSlider").value = action.details.volume;
+                            adjustVolume();
+                            actionLog.push(action);
+                        } else if (action.action === "downloadWinners" || action.action === "downloadRemaining" ||
+                            action.action === "downloadTemplates" || action.action === "uploadLog" || action.action === "updateEventName") {
+                            if (action.action === "updateEventName") {
+                                document.getElementById("eventName").innerText = action.details.name;
+                            }
+                            actionLog.push(action);
+                        } else {
+                            console.warn("Skipping invalid or incomplete log action:", action);
+                        }
+                    }
+                    if (isAttendeesLoaded && totalAttendees !== attendees.length + drawn.length) {
+                        showNotification("Warning: Inconsistent attendee count in log.");
+                    }
+                    if (isPrizesLoaded && currentPrizeIndex > prizes.length) {
+                        showNotification("Warning: Invalid prize index in log.");
+                        currentPrizeIndex = prizes.length;
+                    }
+                    document.getElementById("inputArea").classList.add("active");
+                    updateRemainingInfo();
+                    updatePrizeBanner();
+                    updateStatusIndicator();
+                    console.log("Showing #remainingInfo: Log loaded, inputArea active");
+                    showNotification("Log loaded successfully!");
+                    logAction("uploadLog", { file: file.name });
+                } catch (error) {
+                    console.error("Error parsing log file:", error);
+                    showNotification("Error reading log file. Please upload a valid JSON file.");
+                }
+            };
+            reader.onerror = function () {
+                showNotification("Error reading log file. Please try again.");
+            };
+            reader.readAsText(file);
+        }
+
+        function downloadWinners() {
+            if (drawn.length === 0) {
+                showNotification("No winners drawn yet.");
+                return;
+            }
+            const timestamp = new Date().toLocaleString();
+            const text = `Drawn Winners (as of ${timestamp}):\nName,Prize,Timestamp\n` +
+                drawn.map(w => `${w.name},${w.prize},${w.timestamp}`).join("\n");
+            downloadFile("winners.txt", text);
+            showNotification("Winners list downloaded!");
+            logAction("downloadWinners", { count: drawn.length });
+        }
+
+        function downloadRemaining() {
+            if (attendees.length === 0) {
+                showNotification("No remaining attendees.");
+                return;
+            }
+            const timestamp = new Date().toLocaleString();
+            const text = `Remaining Attendees (as of ${timestamp}):\n` + attendees.join("\n");
+            downloadFile("remaining.txt", text);
+            showNotification("Remaining attendees list downloaded!");
+            logAction("downloadRemaining", { count: attendees.length });
+        }
+
+        function downloadTemplates() {
+            const attendeeTemplate = "Name\nJohn Doe\nJane Smith\n";
+            const prizeTemplate = "Prize,Winners,Value\nGrand Prize,1,1000\nSecond Prize,2,500\n";
+            downloadFile("attendees_template.csv", attendeeTemplate);
+            downloadFile("prizes_template.csv", prizeTemplate);
+            const attendeeWB = XLSX.utils.book_new();
+            const attendeeWS = XLSX.utils.json_to_sheet([{ Name: "John Doe" }, { Name: "Jane Smith" }]);
+            XLSX.utils.book_append_sheet(attendeeWB, attendeeWS, "Attendees");
+            const prizeWB = XLSX.utils.book_new();
+            const prizeWS = XLSX.utils.json_to_sheet([
+                { Prize: "Grand Prize", Winners: 1, Value: 1000 },
+                { Prize: "Second Prize", Winners: 2, Value: 500 }
+            ]);
+            XLSX.utils.book_append_sheet(prizeWB, prizeWS, "Prizes");
+            const attendeeXLSX = XLSX.write(attendeeWB, { bookType: "xlsx", type: "array" });
+            const prizeXLSX = XLSX.write(prizeWB, { bookType: "xlsx", type: "array" });
+            downloadFile("attendees_template.xlsx", new Blob([attendeeXLSX], { type: "application/octet-stream" }));
+            downloadFile("prizes_template.xlsx", new Blob([prizeXLSX], { type: "application/octet-stream" }));
+            showNotification("Template files downloaded!");
+            logAction("downloadTemplates", {});
+        }
+
+        function downloadFile(filename, content) {
+            const blob = new Blob([content], { type: filename.endsWith('.xlsx') ? "application/octet-stream" : "text/plain;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        document.getElementById("menuButton").addEventListener("click", toggleMenu);
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                const active = document.activeElement;
+                if (active.id === 'confirmButton') confirmWinners();
+                if (active.id === 'drawButton') startShuffle();
+                if (active.id === 'menuButton') toggleMenu();
+            }
+        });
+
+        updateRemainingInfo();
+        document.getElementById("inputArea").classList.add("active");
+        updateSoundButton();
+        updatePrizeBanner();
+        updateStatusIndicator();
+        playVideo(idleVideo, true);
+        console.log("Showing #remainingInfo: Initial page load, inputArea active");
+    </script>
+</body>
+
+</html>

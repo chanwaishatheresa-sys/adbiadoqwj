@@ -1,0 +1,177 @@
+[
+  {
+    "timestamp": "08/08/2025, 01:58:52",
+    "action": "uploadAttendees",
+    "details": {
+      "file": "students (2).txt",
+      "count": 38,
+      "names": [
+        "All Students of IS3230 are awesome",
+        "Wai Sha",
+        "Yi Ting",
+        "Tsz Ching",
+        "Chi Yu",
+        "Pui Yin",
+        "Shing Yuen",
+        "Kristi",
+        "Yongni",
+        "Iga",
+        "Ka Ming",
+        "Ching Cheung",
+        "Choi Yan",
+        "Hei Tung",
+        "Anson",
+        "Matthew",
+        "Roy",
+        "Ka Ho",
+        "Chi Long",
+        "Wai Man",
+        "Kui Shing",
+        "Wai",
+        "Xinlei",
+        "Chong Ki",
+        "Ai Ning",
+        "Ellen",
+        "Arvin",
+        "Ingrid",
+        "Karen",
+        "So Wun",
+        "Michelle",
+        "Ka Man",
+        "Sheung Lun",
+        "Yuk Him",
+        "Che Yen",
+        "Eric",
+        "Juno",
+        "Siu Ying"
+      ]
+    }
+  },
+  {
+    "timestamp": "08/08/2025, 01:59:02",
+    "action": "uploadPrizes",
+    "details": {
+      "file": "Prize.csv",
+      "count": 6,
+      "prizes": [
+        {
+          "prize": "YATA Coupon",
+          "winners": 10,
+          "value": null
+        },
+        {
+          "prize": "Massage Coupon",
+          "winners": 10,
+          "value": null
+        },
+        {
+          "prize": "WH-1000XM5",
+          "winners": 10,
+          "value": null
+        },
+        {
+          "prize": "WH-1000XM6",
+          "winners": 5,
+          "value": null
+        },
+        {
+          "prize": "A7M5",
+          "winners": 3,
+          "value": null
+        },
+        {
+          "prize": "X90K",
+          "winners": 1,
+          "value": null
+        }
+      ]
+    }
+  },
+  {
+    "timestamp": "08/08/2025, 01:59:14",
+    "action": "drawWinners",
+    "details": {
+      "prize": "YATA Coupon",
+      "winners": [
+        "Juno",
+        "Hei Tung",
+        "Chi Long",
+        "Kristi",
+        "So Wun",
+        "Ellen",
+        "Ka Man",
+        "Pui Yin",
+        "Matthew",
+        "Roy"
+      ],
+      "count": 10,
+      "value": null
+    }
+  },
+  {
+    "timestamp": "08/08/2025, 01:59:14",
+    "action": "downloadWinners",
+    "details": {
+      "count": 10
+    }
+  },
+  {
+    "timestamp": "08/08/2025, 01:59:14",
+    "action": "downloadRemaining",
+    "details": {
+      "count": 28
+    }
+  },
+  {
+    "timestamp": "08/08/2025, 01:59:50",
+    "action": "confirmWinners",
+    "details": {}
+  },
+  {
+    "timestamp": "08/08/2025, 02:09:56",
+    "action": "uploadLog",
+    "details": {
+      "file": "log.json"
+    }
+  },
+  {
+    "timestamp": "08/08/2025, 02:10:12",
+    "action": "drawWinners",
+    "details": {
+      "prize": "Massage Coupon",
+      "winners": [
+        "Karen",
+        "Shing Yuen",
+        "Iga",
+        "Chi Yu",
+        "Ka Ho",
+        "Tsz Ching",
+        "Michelle",
+        "Anson",
+        "Xinlei",
+        "Yi Ting"
+      ],
+      "count": 10,
+      "value": null
+    }
+  },
+  {
+    "timestamp": "08/08/2025, 02:10:12",
+    "action": "downloadWinners",
+    "details": {
+      "count": 20
+    }
+  },
+  {
+    "timestamp": "08/08/2025, 02:10:12",
+    "action": "downloadRemaining",
+    "details": {
+      "count": 18
+    }
+  },
+  {
+    "timestamp": "08/08/2025, 02:10:19",
+    "action": "confirmWinners",
+    "details": {}
+  }
+]
