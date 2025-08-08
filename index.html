@@ -509,7 +509,7 @@
                 const { prize, winners } = prizes[i];
                 prizeDetails.push(`${prize}: ${winners} Winner${winners > 1 ? 's' : ''}`);
             }
-            const remainingAttendees = totalWinners - drawn.length;
+            const remainingAttendees = totalAttendees - drawn.length;
             document.getElementById("remainingInfo").innerText =
                 `Remaining Winners: ${remainingWinners}\nAttendees Remaining: ${remainingAttendees}\n\nRemaining Prizes:\n${prizeDetails.join('\n')}`;
             const inputArea = document.getElementById("inputArea");
