@@ -501,6 +501,16 @@
         const winnerVideo = "Congrat.mp4";
         const idleVideo = "LuckyDraw.mp4";
 
+        // Load actionLog from localStorage on page load
+        try {
+            const savedLog = localStorage.getItem('actionLog');
+            if (savedLog) {
+                actionLog = JSON.parse(savedLog);
+            }
+        } catch (error) {
+            console.error('Error loading actionLog from localStorage:', error);
+        }
+
         function updateRemainingInfo() {
             const remainingPrizes = prizes.length - currentPrizeIndex;
             const remainingWinners = prizes.slice(currentPrizeIndex).reduce((sum, prize) => sum + prize.winners, 0);
@@ -582,26 +592,42 @@
         async function saveLog() {
             if (actionLog.length === 0) {
                 showNotification("No actions logged yet.");
-                return;
+                return true;
             }
             try {
+                // Save actionLog to localStorage
+                localStorage.setItem('actionLog', JSON.stringify(actionLog));
                 if (!logFileHandle && window.showSaveFilePicker) {
-                    logFileHandle = await window.showSaveFilePicker({
-                        suggestedName: 'log.json',
-                        types: [{ description: 'JSON Files', accept: { 'application/json': ['.json'] } }]
-                    });
+                    try {
+                        logFileHandle = await window.showSaveFilePicker({
+                            suggestedName: 'log.json',
+                            types: [{ description: 'JSON Files', accept: { 'application/json': ['.json'] } }]
+                        });
+                    } catch (error) {
+                        console.warn('File picker canceled or unavailable:', error);
+                        showNotification("Log file creation canceled. Actions saved in memory and localStorage.");
+                        return true; // Continue without error
+                    }
                 }
                 if (logFileHandle) {
-                    const writable = await logFileHandle.createWritable();
-                    await writable.write(JSON.stringify(actionLog, null, 2));
-                    await writable.close();
-                    showNotification("Action log saved!");
+                    try {
+                        const writable = await logFileHandle.createWritable();
+                        await writable.write(JSON.stringify(actionLog, null, 2));
+                        await writable.close();
+                        showNotification("Action log saved!");
+                    } catch (error) {
+                        console.error('Error writing to log file:', error);
+                        showNotification("Error saving log file. Actions saved in memory and localStorage.");
+                        return true; // Continue without error
+                    }
                 } else {
-                    showNotification("File System Access API not available. Please save manually.");
+                    showNotification("File System Access API not available. Actions saved in memory and localStorage.");
                 }
+                return true;
             } catch (error) {
-                console.error('Error saving log:', error);
-                showNotification("Error saving log. Please try again.");
+                console.error('Error in saveLog:', error);
+                showNotification("Error saving log. Actions saved in memory and localStorage.");
+                return true; // Continue without error
             }
         }
 
@@ -696,6 +722,7 @@
                 logFileHandle = null;
                 isAttendeesLoaded = false;
                 isPrizesLoaded = false;
+                localStorage.removeItem('actionLog'); // Clear localStorage
                 document.getElementById("eventName").innerText = "Annual Dinner Lucky Draw";
                 document.getElementById("inputArea").classList.add("active");
                 updateRemainingInfo();
@@ -972,6 +999,7 @@
                         return;
                     }
                     actionLog = [];
+                    localStorage.removeItem('actionLog'); // Clear localStorage before loading new log
                     attendees = [];
                     drawn = [];
                     prizes = [];
@@ -1027,6 +1055,8 @@
                             console.warn("Skipping invalid or incomplete log action:", action);
                         }
                     }
+                    // Save to localStorage after loading log
+                    localStorage.setItem('actionLog', JSON.stringify(actionLog));
                     if (isAttendeesLoaded && totalAttendees !== attendees.length + drawn.length) {
                         showNotification("Warning: Inconsistent attendee count in log.");
                     }
@@ -1052,10 +1082,10 @@
                             showNotification("Log file created successfully!");
                         } catch (error) {
                             console.error('Error creating log file:', error);
-                            showNotification("Error creating log file. Actions will still be logged in memory.");
+                            showNotification("Error creating log file. Actions will still be logged in memory and localStorage.");
                         }
                     } else {
-                        showNotification("File System Access API not available. Actions will be logged in memory.");
+                        showNotification("File System Access API not available. Actions will be logged in memory and localStorage.");
                     }
                 } catch (error) {
                     console.error("Error parsing log file:", error);
