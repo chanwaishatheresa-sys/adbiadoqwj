@@ -954,105 +954,133 @@
             showNotification(Loaded ${prizes.length} prizes!);
         }
 
-        function handleLogFile(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            if (!file.name.endsWith('.json')) {
-                showNotification("Invalid file format. Please upload a .json file.");
-                return;
-            }
-            if (file.size > 1024 * 1024) {
-                showNotification("File is too large. Maximum size is 1MB.");
-                return;
-            }
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                try {
-                    const log = JSON.parse(e.target.result);
-                    if (!Array.isArray(log)) {
-                        showNotification("Invalid log format. Expected an array of actions.");
-                        return;
-                    }
-                    actionLog = [];
-                    attendees = [];
-                    drawn = [];
-                    prizes = [];
-                    currentPrizeIndex = 0;
-                    totalAttendees = 0;
-                    totalWinners = 0;
-                    isAttendeesLoaded = false;
-                    isPrizesLoaded = false;
-                    for (const action of log) {
-                        if (action.action === "uploadAttendees" && action.details.names) {
-                            attendees = [...action.details.names];
-                            totalAttendees = action.details.count || attendees.length;
-                            isAttendeesLoaded = totalAttendees > 0;
-                            actionLog.push(action);
-                        } else if (action.action === "uploadPrizes" && action.details.prizes) {
-                            prizes = action.details.prizes.map(p => ({
-                                prize: p.prize,
-                                winners: parseInt(p.winners),
-                                value: p.value ? parseFloat(p.value) : null
-                            }));
-                            totalWinners = prizes.reduce((sum, prize) => sum + prize.winners, 0);
-                            isPrizesLoaded = prizes.length > 0;
-                            currentPrizeIndex = 0;
-                            actionLog.push(action);
-                        } else if (action.action === "drawWinners" && action.details.winners) {
-                            const winners = action.details.winners;
-                            drawn.push(...winners.map(name => ({
-                                name,
-                                prize: action.details.prize,
-                                timestamp: action.timestamp
-                            })));
-                            attendees = attendees.filter(name => !winners.includes(name));
-                            currentPrizeIndex++;
-                            actionLog.push(action);
-                        } else if (action.action === "confirmWinners" || action.action === "resetAll" ||
-                            action.action === "viewHistory" || action.action === "backToMain") {
-                            actionLog.push(action);
-                        } else if (action.action === "toggleSound") {
-                            isSoundEnabled = action.details.soundEnabled;
-                            updateSoundButton();
-                            actionLog.push(action);
-                        } else if (action.action === "adjustVolume") {
-                            document.getElementById("volumeSlider").value = action.details.volume;
-                            adjustVolume();
-                            actionLog.push(action);
-                        } else if (action.action === "downloadWinners" || action.action === "downloadRemaining" ||
-                            action.action === "downloadTemplates" || action.action === "uploadLog" || action.action === "updateEventName") {
-                            if (action.action === "updateEventName") {
-                                document.getElementById("eventName").innerText = action.details.name;
-                            }
-                            actionLog.push(action);
-                        } else {
-                            console.warn("Skipping invalid or incomplete log action:", action);
-                        }
-                    }
-                    if (isAttendeesLoaded && totalAttendees !== attendees.length + drawn.length) {
-                        showNotification("Warning: Inconsistent attendee count in log.");
-                    }
-                    if (isPrizesLoaded && currentPrizeIndex > prizes.length) {
-                        showNotification("Warning: Invalid prize index in log.");
-                        currentPrizeIndex = prizes.length;
-                    }
-                    document.getElementById("inputArea").classList.add("active");
-                    updateRemainingInfo();
-                    updatePrizeBanner();
-                    updateStatusIndicator();
-                    console.log("Showing #remainingInfo: Log loaded, inputArea active");
-                    showNotification("Log loaded successfully!");
-                    logAction("uploadLog", { file: file.name });
-                } catch (error) {
-                    console.error("Error parsing log file:", error);
-                    showNotification("Error reading log file. Please upload a valid JSON file.");
-                }
-            };
-            reader.onerror = function () {
-                showNotification("Error reading log file. Please try again.");
-            };
-            reader.readAsText(file);
+    function handleLogFile(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        if (!file.name.endsWith('.json')) {
+            showNotification("Invalid file format. Please upload a .json file.");
+            return;
         }
+        if (file.size > 1024 * 1024) {
+            showNotification("File is too large. Maximum size is 1MB.");
+            return;
+        }
+    
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            try {
+                const log = JSON.parse(e.target.result);
+                if (!Array.isArray(log)) {
+                    showNotification("Invalid log format. Expected an array.");
+                    return;
+                }
+    
+                // Reset everything first
+                attendees = [];
+                drawn = [];
+                prizes = [];
+                actionLog = [];
+                currentPrizeIndex = 0;
+                totalAttendees = 0;
+                totalWinners = 0;
+                isAttendeesLoaded = false;
+                isPrizesLoaded = false;
+    
+                const initialAttendees = [];
+                const drawnSet = new Set();
+    
+                for (const entry of log) {
+                    if (!entry.action || !entry.timestamp || !entry.details) continue;
+    
+                    switch (entry.action) {
+                        case "uploadAttendees":
+                            if (Array.isArray(entry.details.names)) {
+                                initialAttendees.push(...entry.details.names);
+                                totalAttendees = entry.details.count || initialAttendees.length;
+                                isAttendeesLoaded = true;
+                            }
+                            break;
+    
+                        case "uploadPrizes":
+                            if (Array.isArray(entry.details.prizes)) {
+                                prizes = entry.details.prizes.map(p => ({
+                                    prize: p.prize,
+                                    winners: parseInt(p.winners),
+                                    value: isNaN(parseFloat(p.value)) ? null : parseFloat(p.value)
+                                }));
+                                totalWinners = prizes.reduce((sum, p) => sum + p.winners, 0);
+                                isPrizesLoaded = true;
+                            }
+                            break;
+    
+                        case "drawWinners":
+                            if (Array.isArray(entry.details.winners)) {
+                                entry.details.winners.forEach(name => drawnSet.add(name));
+                                drawn.push(...entry.details.winners.map(name => ({
+                                    name,
+                                    prize: entry.details.prize || "Unknown",
+                                    timestamp: entry.timestamp
+                                })));
+                            }
+                            break;
+    
+                        case "confirmWinners":
+                            currentPrizeIndex++; // one prize confirmed
+                            break;
+    
+                        case "updateEventName":
+                            document.getElementById("eventName").innerText = entry.details.name;
+                            break;
+    
+                        case "toggleSound":
+                            isSoundEnabled = entry.details.soundEnabled;
+                            updateSoundButton();
+                            break;
+    
+                        case "adjustVolume":
+                            document.getElementById("volumeSlider").value = entry.details.volume;
+                            adjustVolume();
+                            break;
+    
+                        default:
+                            // Record action even if not affecting state
+                            break;
+                    }
+    
+                    actionLog.push(entry);
+                }
+    
+                // Final attendee rebuild
+                attendees = initialAttendees.filter(name => !drawnSet.has(name));
+                totalAttendees = initialAttendees.length;
+    
+                // Safety check
+                if (currentPrizeIndex > prizes.length) {
+                    currentPrizeIndex = prizes.length;
+                    showNotification("Warning: More confirmed draws than available prizes.");
+                }
+    
+                // Final UI updates
+                document.getElementById("inputArea").classList.add("active");
+                updateRemainingInfo();
+                updatePrizeBanner();
+                updateStatusIndicator();
+                showNotification("Log loaded successfully!");
+                logAction("uploadLog", { file: file.name });
+    
+            } catch (err) {
+                console.error("Log load error:", err);
+                showNotification("Failed to parse log. Make sure it's a valid JSON file.");
+            }
+        };
+    
+        reader.onerror = function () {
+            showNotification("Error reading log file.");
+        };
+    
+        reader.readAsText(file);
+    }
+
 
         function downloadWinners() {
             if (drawn.length === 0) {
