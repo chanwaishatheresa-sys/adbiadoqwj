@@ -501,16 +501,6 @@
         const winnerVideo = "Congrat.mp4";
         const idleVideo = "LuckyDraw.mp4";
 
-        // Load actionLog from localStorage on page load
-        try {
-            const savedLog = localStorage.getItem('actionLog');
-            if (savedLog) {
-                actionLog = JSON.parse(savedLog);
-            }
-        } catch (error) {
-            console.error('Error loading actionLog from localStorage:', error);
-        }
-
         function updateRemainingInfo() {
             const remainingPrizes = prizes.length - currentPrizeIndex;
             const remainingWinners = prizes.slice(currentPrizeIndex).reduce((sum, prize) => sum + prize.winners, 0);
@@ -591,50 +581,38 @@
 
         async function saveLog() {
             if (actionLog.length === 0) {
-                showNotification("No actions logged yet.");
+                showNotification("No actions to log.");
                 return true;
             }
+            if (!window.showSaveFilePicker) {
+                showNotification("File System Access API not supported. Please use a compatible browser (e.g., Chrome, Edge).");
+                return false;
+            }
             try {
-                // Save actionLog to localStorage
-                localStorage.setItem('actionLog', JSON.stringify(actionLog));
-                if (!logFileHandle && window.showSaveFilePicker) {
-                    try {
-                        logFileHandle = await window.showSaveFilePicker({
-                            suggestedName: 'log.json',
-                            types: [{ description: 'JSON Files', accept: { 'application/json': ['.json'] } }]
-                        });
-                    } catch (error) {
-                        console.warn('File picker canceled or unavailable:', error);
-                        showNotification("Log file creation canceled. Actions saved in memory and localStorage.");
-                        return true; // Continue without error
-                    }
+                if (!logFileHandle) {
+                    logFileHandle = await window.showSaveFilePicker({
+                        suggestedName: 'log.json',
+                        types: [{ description: 'JSON Files', accept: { 'application/json': ['.json'] } }]
+                    });
                 }
-                if (logFileHandle) {
-                    try {
-                        const writable = await logFileHandle.createWritable();
-                        await writable.write(JSON.stringify(actionLog, null, 2));
-                        await writable.close();
-                        showNotification("Action log saved!");
-                    } catch (error) {
-                        console.error('Error writing to log file:', error);
-                        showNotification("Error saving log file. Actions saved in memory and localStorage.");
-                        return true; // Continue without error
-                    }
-                } else {
-                    showNotification("File System Access API not available. Actions saved in memory and localStorage.");
-                }
+                const writable = await logFileHandle.createWritable();
+                await writable.write(JSON.stringify(actionLog, null, 2));
+                await writable.close();
+                showNotification("Action log saved to log.json!");
                 return true;
             } catch (error) {
-                console.error('Error in saveLog:', error);
-                showNotification("Error saving log. Actions saved in memory and localStorage.");
-                return true; // Continue without error
+                console.error('Error saving log:', error);
+                showNotification("Failed to save log file. Please select a valid file location.");
+                logFileHandle = null; // Reset handle to prompt again on next attempt
+                return false;
             }
         }
 
-        function logAction(action, details) {
+        async function logAction(action, details) {
             const timestamp = new Date().toLocaleString();
             actionLog.push({ timestamp, action, details });
-            saveLog();
+            const success = await saveLog();
+            return success;
         }
 
         function updateSoundButton() {
@@ -722,7 +700,6 @@
                 logFileHandle = null;
                 isAttendeesLoaded = false;
                 isPrizesLoaded = false;
-                localStorage.removeItem('actionLog'); // Clear localStorage
                 document.getElementById("eventName").innerText = "Annual Dinner Lucky Draw";
                 document.getElementById("inputArea").classList.add("active");
                 updateRemainingInfo();
@@ -845,7 +822,7 @@
             logAction("confirmWinners", {});
         }
 
-        function handleFile(event) {
+        async function handleFile(event) {
             const file = event.target.files[0];
             if (!file) return;
             const ext = file.name.split('.').pop().toLowerCase();
@@ -857,37 +834,38 @@
                 showNotification("File is too large. Maximum size is 1MB.");
                 return;
             }
+            const reader = new FileReader();
+            reader.onerror = function () {
+                showNotification("Error reading attendee file. Please try again.");
+            };
             if (ext === 'xlsx') {
-                const reader = new FileReader();
-                reader.onload = function (e) {
+                reader.onload = async function (e) {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
                     const sheet = workbook.Sheets[workbook.SheetNames[0]];
                     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
                     const names = rows[0][0].toLowerCase() === "name" ? rows.slice(1).map(row => row[0]) : rows.map(row => row[0]);
-                    processAttendees(names, file.name);
-                };
-                reader.onerror = function () {
-                    showNotification("Error reading attendee file. Please try again.");
+                    await processAttendees(names, file.name);
                 };
                 reader.readAsArrayBuffer(file);
             } else {
-                const reader = new FileReader();
-                reader.onload = function (e) {
+                reader.onload = async function (e) {
                     const lines = e.target.result.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
                     const names = lines[0].toLowerCase() === "name" ? lines.slice(1) : lines;
-                    processAttendees(names, file.name);
-                };
-                reader.onerror = function () {
-                    showNotification("Error reading attendee file. Please try again.");
+                    await processAttendees(names, file.name);
                 };
                 reader.readAsText(file);
             }
         }
 
-        function processAttendees(names, filename) {
+        async function processAttendees(names, filename) {
             if (names.length === 0) {
                 showNotification("No valid attendee names found in the file.");
+                return;
+            }
+            const success = await logAction("uploadAttendees", { file: filename, count: names.length, names });
+            if (!success) {
+                showNotification("Attendee upload canceled due to log file error.");
                 return;
             }
             attendees = names.filter(Boolean);
@@ -899,11 +877,10 @@
             updatePrizeBanner();
             updateStatusIndicator();
             console.log("Showing #remainingInfo: Attendees processed, inputArea active");
-            logAction("uploadAttendees", { file: filename, count: names.length, names });
             showNotification(`Loaded ${attendees.length} attendees!`);
         }
 
-        function handlePrizeFile(event) {
+        async function handlePrizeFile(event) {
             const file = event.target.files[0];
             if (!file) return;
             const ext = file.name.split('.').pop().toLowerCase();
@@ -915,22 +892,21 @@
                 showNotification("File is too large. Maximum size is 1MB.");
                 return;
             }
+            const reader = new FileReader();
+            reader.onerror = function () {
+                showNotification("Error reading prize file. Please try again.");
+            };
             if (ext === 'xlsx') {
-                const reader = new FileReader();
-                reader.onload = function (e) {
+                reader.onload = async function (e) {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
                     const sheet = workbook.Sheets[workbook.SheetNames[0]];
                     const rows = XLSX.utils.sheet_to_json(sheet, { header: ['prize', 'winners', 'value'] });
-                    processPrizes(rows, file.name);
-                };
-                reader.onerror = function () {
-                    showNotification("Error reading prize file. Please try again.");
+                    await processPrizes(rows, file.name);
                 };
                 reader.readAsArrayBuffer(file);
             } else {
-                const reader = new FileReader();
-                reader.onload = function (e) {
+                reader.onload = async function (e) {
                     const lines = e.target.result.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
                     const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
                     if (headers[0] !== "prize" || headers[1] !== "winners") {
@@ -941,17 +917,14 @@
                         const [prize, winners, value] = line.split(',').map(s => s.trim());
                         return { prize, winners, value };
                     });
-                    processPrizes(rows, file.name);
-                };
-                reader.onerror = function () {
-                    showNotification("Error reading prize file. Please try again.");
+                    await processPrizes(rows, file.name);
                 };
                 reader.readAsText(file);
             }
         }
 
-        function processPrizes(rows, filename) {
-            prizes = rows.map(row => {
+        async function processPrizes(rows, filename) {
+            const parsedPrizes = rows.map(row => {
                 const winnerCount = parseInt(row.winners);
                 const prizeValue = row.value ? parseFloat(row.value) : null;
                 if (!row.prize || isNaN(winnerCount) || winnerCount < 1) {
@@ -960,12 +933,16 @@
                 }
                 return { prize: row.prize, winners: winnerCount, value: prizeValue };
             }).filter(p => p !== null);
-            if (prizes.length === 0) {
+            if (parsedPrizes.length === 0) {
                 showNotification("No valid prizes found in the file.");
-                prizes = [];
-                isPrizesLoaded = false;
                 return;
             }
+            const success = await logAction("uploadPrizes", { file: filename, count: parsedPrizes.length, prizes: parsedPrizes });
+            if (!success) {
+                showNotification("Prize upload canceled due to log file error.");
+                return;
+            }
+            prizes = parsedPrizes;
             totalWinners = prizes.reduce((sum, prize) => sum + prize.winners, 0);
             currentPrizeIndex = 0;
             isPrizesLoaded = true;
@@ -975,7 +952,6 @@
             updateRemainingInfo();
             document.getElementById("drawButton").disabled = !isAttendeesLoaded || attendees.length === 0;
             console.log("Showing #remainingInfo: Prizes processed, inputArea active");
-            logAction("uploadPrizes", { file: filename, count: prizes.length, prizes });
             showNotification(`Loaded ${prizes.length} prizes!`);
         }
 
@@ -999,7 +975,6 @@
                         return;
                     }
                     actionLog = [];
-                    localStorage.removeItem('actionLog'); // Clear localStorage before loading new log
                     attendees = [];
                     drawn = [];
                     prizes = [];
@@ -1055,8 +1030,6 @@
                             console.warn("Skipping invalid or incomplete log action:", action);
                         }
                     }
-                    // Save to localStorage after loading log
-                    localStorage.setItem('actionLog', JSON.stringify(actionLog));
                     if (isAttendeesLoaded && totalAttendees !== attendees.length + drawn.length) {
                         showNotification("Warning: Inconsistent attendee count in log.");
                     }
@@ -1070,8 +1043,11 @@
                     updateStatusIndicator();
                     console.log("Showing #remainingInfo: Log loaded, inputArea active");
                     showNotification("Log loaded successfully!");
-                    logAction("uploadLog", { file: file.name });
-
+                    const success = await logAction("uploadLog", { file: file.name });
+                    if (!success) {
+                        showNotification("Log upload completed, but failed to save new log file.");
+                        return;
+                    }
                     if (window.showSaveFilePicker) {
                         try {
                             logFileHandle = await window.showSaveFilePicker({
@@ -1082,10 +1058,11 @@
                             showNotification("Log file created successfully!");
                         } catch (error) {
                             console.error('Error creating log file:', error);
-                            showNotification("Error creating log file. Actions will still be logged in memory and localStorage.");
+                            showNotification("Log upload completed, but failed to create new log file.");
+                            logFileHandle = null;
                         }
                     } else {
-                        showNotification("File System Access API not available. Actions will be logged in memory and localStorage.");
+                        showNotification("File System Access API not available. Please use a compatible browser.");
                     }
                 } catch (error) {
                     console.error("Error parsing log file:", error);
