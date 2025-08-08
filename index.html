@@ -507,11 +507,11 @@
             let prizeDetails = [];
             for (let i = currentPrizeIndex; i < prizes.length; i++) {
                 const { prize, winners } = prizes[i];
-                prizeDetails.push(`${prize}: ${winners} Winner${winners > 1 ? 's' : ''}`);
+                prizeDetails.push(${prize}: ${winners} Winner${winners > 1 ? 's' : ''});
             }
             const remainingAttendees = totalAttendees - drawn.length;
             document.getElementById("remainingInfo").innerText =
-                `Remaining Winners: ${remainingWinners}\nAttendees Remaining: ${remainingAttendees}\n\nRemaining Prizes:\n${prizeDetails.join('\n')}`;
+                Remaining Winners: ${remainingWinners}\nAttendees Remaining: ${remainingAttendees}\n\nRemaining Prizes:\n${prizeDetails.join('\n')};
             const inputArea = document.getElementById("inputArea");
             const remainingInfo = document.getElementById("remainingInfo");
             if (inputArea.classList.contains("active")) {
@@ -527,12 +527,12 @@
             const status = document.getElementById("statusIndicator");
             const messages = [];
             if (isAttendeesLoaded) {
-                messages.push(`Attendees: ${totalAttendees} loaded`);
+                messages.push(Attendees: ${totalAttendees} loaded);
             } else {
                 messages.push("Attendees: Not loaded");
             }
             if (isPrizesLoaded) {
-                messages.push(`Prizes: ${prizes.length} loaded`);
+                messages.push(Prizes: ${prizes.length} loaded);
             } else {
                 messages.push("Prizes: Not loaded");
             }
@@ -544,7 +544,7 @@
             const drawButton = document.getElementById("drawButton");
             if (currentPrizeIndex < prizes.length) {
                 const { prize, winners } = prizes[currentPrizeIndex];
-                banner.innerText = `${prize} (${winners} Winner${winners > 1 ? 's' : ''})`;
+                banner.innerText = ${prize} (${winners} Winner${winners > 1 ? 's' : ''});
                 drawButton.disabled = !isAttendeesLoaded || !isPrizesLoaded || attendees.length === 0 || winners > attendees.length;
             } else {
                 banner.innerText = prizes.length > 0 ? "All prizes awarded!" : "No prizes loaded.";
@@ -598,7 +598,6 @@
                     showNotification("Action log saved!");
                 } else {
                     showNotification("File System Access API not available. Please save manually.");
-                    downloadFile("log.json", JSON.stringify(actionLog, null, 2));
                 }
             } catch (error) {
                 console.error('Error saving log:', error);
@@ -609,9 +608,7 @@
         function logAction(action, details) {
             const timestamp = new Date().toLocaleString();
             actionLog.push({ timestamp, action, details });
-            if (action !== "uploadLog") {
-                saveLog();
-            }
+            saveLog();
         }
 
         function updateSoundButton() {
@@ -655,20 +652,20 @@
             if (actionLog.length === 0) {
                 html += "<p>No draws recorded yet.</p>";
             } else {
-                html += `
+                html += 
                     <table>
                         <tr>
                             <th>Timestamp</th>
                             <th>Prize</th>
                             <th>Winners</th>
-                        </tr>`;
+                        </tr>;
                 actionLog.filter(log => log.action === "drawWinners").forEach(log => {
-                    html += `
+                    html += 
                         <tr>
                             <td>${log.timestamp}</td>
                             <td>${log.details.prize}</td>
                             <td>${log.details.winners.join(", ")}</td>
-                        </tr>`;
+                        </tr>;
                 });
                 html += "</table>";
             }
@@ -718,7 +715,7 @@
         function shuffleNames() {
             if (attendees.length === 0) return "";
             const randomIndex = Math.floor(Math.random() * attendees.length);
-            return `🎲 ${attendees[randomIndex]} 🎲`;
+            return 🎲 ${attendees[randomIndex]} 🎲;
         }
 
         function startShuffle() {
@@ -732,7 +729,7 @@
                 return;
             }
             if (winners > attendees.length) {
-                showNotification(`Only ${attendees.length} attendees remaining for ${winners} winners.`);
+                showNotification(Only ${attendees.length} attendees remaining for ${winners} winners.);
                 return;
             }
             if (isSoundEnabled) {
@@ -758,7 +755,6 @@
                 shuffleDisplay.style.display = "none";
                 drawWinners();
             }, 3000);
-            logAction("startShuffle", {});
         }
 
         function drawWinners() {
@@ -773,12 +769,12 @@
             updateStatusIndicator();
             const winnersDiv = document.getElementById("winners");
             winnersDiv.innerHTML = selected.map(name =>
-                `<div class="card" tabindex="0" role="region" aria-label="Winner: ${name}">
+                <div class="card" tabindex="0" role="region" aria-label="Winner: ${name}">
                     <div class="card-inner">
                         <div class="card-front"></div>
                         <div class="card-back">🎉 ${name} 🎉</div>
                     </div>
-                </div>`
+                </div>
             ).join("");
             const cards = document.querySelectorAll('.card');
             cards.forEach((card, index) => {
@@ -879,7 +875,7 @@
             updateStatusIndicator();
             console.log("Showing #remainingInfo: Attendees processed, inputArea active");
             logAction("uploadAttendees", { file: filename, count: names.length, names });
-            showNotification(`Loaded ${attendees.length} attendees!`);
+            showNotification(Loaded ${attendees.length} attendees!);
         }
 
         function handlePrizeFile(event) {
@@ -934,7 +930,7 @@
                 const winnerCount = parseInt(row.winners);
                 const prizeValue = row.value ? parseFloat(row.value) : null;
                 if (!row.prize || isNaN(winnerCount) || winnerCount < 1) {
-                    showNotification(`Invalid prize data: ${JSON.stringify(row)}`);
+                    showNotification(Invalid prize data: ${JSON.stringify(row)});
                     return null;
                 }
                 return { prize: row.prize, winners: winnerCount, value: prizeValue };
@@ -955,7 +951,7 @@
             document.getElementById("drawButton").disabled = !isAttendeesLoaded || attendees.length === 0;
             console.log("Showing #remainingInfo: Prizes processed, inputArea active");
             logAction("uploadPrizes", { file: filename, count: prizes.length, prizes });
-            showNotification(`Loaded ${prizes.length} prizes!`);
+            showNotification(Loaded ${prizes.length} prizes!);
         }
 
         function handleLogFile(event) {
@@ -1064,8 +1060,8 @@
                 return;
             }
             const timestamp = new Date().toLocaleString();
-            const text = `Drawn Winners (as of ${timestamp}):\nName,Prize,Timestamp\n` +
-                drawn.map(w => `${w.name},${w.prize},${w.timestamp}`).join("\n");
+            const text = Drawn Winners (as of ${timestamp}):\nName,Prize,Timestamp\n +
+                drawn.map(w => ${w.name},${w.prize},${w.timestamp}).join("\n");
             downloadFile("winners.txt", text);
             showNotification("Winners list downloaded!");
             logAction("downloadWinners", { count: drawn.length });
@@ -1077,7 +1073,7 @@
                 return;
             }
             const timestamp = new Date().toLocaleString();
-            const text = `Remaining Attendees (as of ${timestamp}):\n` + attendees.join("\n");
+            const text = Remaining Attendees (as of ${timestamp}):\n + attendees.join("\n");
             downloadFile("remaining.txt", text);
             showNotification("Remaining attendees list downloaded!");
             logAction("downloadRemaining", { count: attendees.length });
