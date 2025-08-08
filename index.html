@@ -1077,9 +1077,9 @@
                 return;
             }
             const timestamp = new Date().toLocaleString();
-            const text = `Drawn Winners (as of ${timestamp}):\nName,Prize,Timestamp\n` +
-                drawn.map(w => `${w.name},${w.prize},${w.timestamp}`).join("\n");
-            downloadFile("winners.txt", text);
+            const csv = `Name,Prize,Timestamp\n` +
+                drawn.map(w => `"${w.name}","${w.prize}","${w.timestamp}"`).join("\n");
+            downloadFile("winners.csv", csv);
             showNotification("Winners list downloaded!");
             logAction("downloadWinners", { count: drawn.length });
         }
@@ -1090,8 +1090,8 @@
                 return;
             }
             const timestamp = new Date().toLocaleString();
-            const text = `Remaining Attendees (as of ${timestamp}):\n` + attendees.join("\n");
-            downloadFile("remaining.txt", text);
+            const csv = `Name\n` + attendees.map(name => `"${name}"`).join("\n");
+            downloadFile("remaining.csv", csv);
             showNotification("Remaining attendees list downloaded!");
             logAction("downloadRemaining", { count: attendees.length });
         }
@@ -1119,7 +1119,10 @@
         }
 
         function downloadFile(filename, content) {
-            const blob = new Blob([content], { type: filename.endsWith('.xlsx') ? "application/octet-stream" : "text/plain;charset=utf-8" });
+            const type = filename.endsWith('.xlsx') ? "application/octet-stream"
+                        : filename.endsWith('.csv') ? "text/csv;charset=utf-8"
+                        : "text/plain;charset=utf-8";
+            const blob = new Blob([content], { type });
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
