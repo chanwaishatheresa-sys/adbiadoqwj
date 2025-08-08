@@ -566,7 +566,6 @@
             const volume = document.getElementById("volumeSlider").value;
             document.getElementById("drumroll").volume = volume;
             document.getElementById("applause").volume = volume;
-            logAction("adjustVolume", { volume });
         }
 
         function changeEventName() {
@@ -607,11 +606,11 @@
         }
 
         function logAction(action, details) {
+            const allowedActions = ["uploadAttendees", "uploadPrizes", "resetAll", "updateEventName", "drawWinners"];
+            if (!allowedActions.includes(action)) return;
             const timestamp = new Date().toLocaleString();
             actionLog.push({ timestamp, action, details });
-            if (action !== "uploadLog") {
-                saveLog();
-            }
+            saveLog();
         }
 
         function updateSoundButton() {
@@ -621,7 +620,6 @@
         function toggleSound() {
             isSoundEnabled = !isSoundEnabled;
             updateSoundButton();
-            logAction("toggleSound", { soundEnabled: isSoundEnabled });
         }
 
         function showNotification(message) {
@@ -642,7 +640,6 @@
                 menu.style.display = "flex";
                 setTimeout(() => { menu.classList.add("active"); }, 10);
             }
-            logAction("toggleMenu", {});
         }
 
         function showHistory() {
@@ -675,7 +672,6 @@
             }
             historyContent.innerHTML = html;
             toggleMenu();
-            logAction("viewHistory", {});
         }
 
         function backToMain() {
@@ -684,7 +680,6 @@
             document.getElementById("inputArea").classList.add("active");
             updateRemainingInfo();
             console.log("Showing #remainingInfo: Back to main page, inputArea active");
-            logAction("backToMain", {});
         }
 
         function confirmReset() {
@@ -759,7 +754,6 @@
                 shuffleDisplay.style.display = "none";
                 drawWinners();
             }, 3000);
-            logAction("startShuffle", {});
         }
 
         function drawWinners() {
@@ -820,7 +814,6 @@
             updateRemainingInfo();
             playVideo(idleVideo, true);
             console.log("Showing #remainingInfo: Confirm winners, inputArea active");
-            logAction("confirmWinners", {});
         }
 
         function handleFile(event) {
@@ -1013,19 +1006,7 @@
                             attendees = attendees.filter(name => !winners.includes(name));
                             currentPrizeIndex++;
                             actionLog.push(action);
-                        } else if (action.action === "confirmWinners" || action.action === "resetAll" ||
-                            action.action === "viewHistory" || action.action === "backToMain") {
-                            actionLog.push(action);
-                        } else if (action.action === "toggleSound") {
-                            isSoundEnabled = action.details.soundEnabled;
-                            updateSoundButton();
-                            actionLog.push(action);
-                        } else if (action.action === "adjustVolume") {
-                            document.getElementById("volumeSlider").value = action.details.volume;
-                            adjustVolume();
-                            actionLog.push(action);
-                        } else if (action.action === "downloadWinners" || action.action === "downloadRemaining" ||
-                            action.action === "downloadTemplates" || action.action === "uploadLog" || action.action === "updateEventName") {
+                        } else if (action.action === "resetAll" || action.action === "updateEventName") {
                             if (action.action === "updateEventName") {
                                 document.getElementById("eventName").innerText = action.details.name;
                             }
@@ -1047,7 +1028,6 @@
                     updateStatusIndicator();
                     console.log("Showing #remainingInfo: Log loaded, inputArea active");
                     showNotification("Log loaded successfully!");
-                    logAction("uploadLog", { file: file.name });
                 } catch (error) {
                     console.error("Error parsing log file:", error);
                     showNotification("Error reading log file. Please upload a valid JSON file.");
@@ -1069,7 +1049,6 @@
                 drawn.map(w => `${w.name},${w.prize},${w.timestamp}`).join("\n");
             downloadFile("winners.txt", text);
             showNotification("Winners list downloaded!");
-            logAction("downloadWinners", { count: drawn.length });
         }
 
         function downloadRemaining() {
@@ -1081,7 +1060,6 @@
             const text = `Remaining Attendees (as of ${timestamp}):\n` + attendees.join("\n");
             downloadFile("remaining.txt", text);
             showNotification("Remaining attendees list downloaded!");
-            logAction("downloadRemaining", { count: attendees.length });
         }
 
         function downloadTemplates() {
@@ -1103,7 +1081,6 @@
             downloadFile("attendees_template.xlsx", new Blob([attendeeXLSX], { type: "application/octet-stream" }));
             downloadFile("prizes_template.xlsx", new Blob([prizeXLSX], { type: "application/octet-stream" }));
             showNotification("Template files downloaded!");
-            logAction("downloadTemplates", {});
         }
 
         function downloadFile(filename, content) {
