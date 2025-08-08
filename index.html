@@ -608,7 +608,11 @@
         function logAction(action, details) {
             const timestamp = new Date().toLocaleString();
             actionLog.push({ timestamp, action, details });
-            saveLog();
+        
+            // Only save log if at least attendees or prizes are loaded
+            if (isAttendeesLoaded || isPrizesLoaded) {
+                saveLog();
+            }
         }
 
         function updateSoundButton() {
