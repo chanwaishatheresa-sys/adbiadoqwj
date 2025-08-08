@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -422,6 +423,7 @@
         }
     </style>
 </head>
+
 <body>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -464,11 +466,13 @@
             <h1 id="eventName">Annual Dinner Lucky Draw</h1>
             <div id="prizeBanner"></div>
             <div id="inputArea" class="active">
-                <button id="drawButton" onclick="startShuffle()" aria-label="Draw random winners" tabindex="0" disabled>Draw Winners</button>
+                <button id="drawButton" onclick="startShuffle()" aria-label="Draw random winners" tabindex="0"
+                    disabled>Draw Winners</button>
             </div>
             <div id="shuffleDisplay"></div>
             <div id="winners"></div>
-            <button id="confirmButton" onclick="confirmWinners()" aria-label="Confirm selected winners" tabindex="0">Confirm Winners</button>
+            <button id="confirmButton" onclick="confirmWinners()" aria-label="Confirm selected winners"
+                tabindex="0">Confirm Winners</button>
         </div>
         <div id="remainingInfo"></div>
     </div>
@@ -561,7 +565,7 @@
         function adjustVolume() {
             const volume = document.getElementById("volumeSlider").value;
             document.getElementById("drumroll").volume = volume;
-            document.getElementById("applause"). proofreadingvolume = volume;
+            document.getElementById("applause").volume = volume;
             logAction("adjustVolume", { volume });
         }
 
@@ -577,7 +581,8 @@
 
         async function saveLog() {
             if (actionLog.length === 0) {
-                return; // No notification if no actions to save
+                showNotification("No actions logged yet.");
+                return;
             }
             try {
                 if (!logFileHandle && window.showSaveFilePicker) {
@@ -590,26 +595,23 @@
                     const writable = await logFileHandle.createWritable();
                     await writable.write(JSON.stringify(actionLog, null, 2));
                     await writable.close();
-                    console.log("Action log saved to file!");
+                    showNotification("Action log saved!");
                 } else {
-                    // Fallback for browsers without File System Access API
-                    const timestamp = new Date().toLocaleString().replace(/[/,:]/g, '-');
-                    downloadFile(`log-${timestamp}.json`, JSON.stringify(actionLog, null, 2));
-                    console.log("Action log downloaded as fallback!");
+                    showNotification("File System Access API not available. Please save manually.");
+                    downloadFile("log.json", JSON.stringify(actionLog, null, 2));
                 }
             } catch (error) {
                 console.error('Error saving log:', error);
-                showNotification("Error saving log. Using fallback download.");
-                // Fallback to downloading the file
-                const timestamp = new Date().toLocaleString().replace(/[/,:]/g, '-');
-                downloadFile(`log-${timestamp}.json`, JSON.stringify(actionLog, null, 2));
+                showNotification("Error saving log. Please try again.");
             }
         }
 
         function logAction(action, details) {
             const timestamp = new Date().toLocaleString();
             actionLog.push({ timestamp, action, details });
-            saveLog(); // Save log on every action
+            if (action !== "uploadLog") {
+                saveLog();
+            }
         }
 
         function updateSoundButton() {
@@ -640,6 +642,7 @@
                 menu.style.display = "flex";
                 setTimeout(() => { menu.classList.add("active"); }, 10);
             }
+            logAction("toggleMenu", {});
         }
 
         function showHistory() {
@@ -756,6 +759,7 @@
                 shuffleDisplay.style.display = "none";
                 drawWinners();
             }, 3000);
+            logAction("startShuffle", {});
         }
 
         function drawWinners() {
@@ -1134,4 +1138,5 @@
         console.log("Showing #remainingInfo: Initial page load, inputArea active");
     </script>
 </body>
+
 </html>
