@@ -608,11 +608,7 @@
         function logAction(action, details) {
             const timestamp = new Date().toLocaleString();
             actionLog.push({ timestamp, action, details });
-        
-            // Only save log if at least attendees or prizes are loaded
-            if (isAttendeesLoaded || isPrizesLoaded) {
-                saveLog();
-            }
+            saveLog();
         }
 
         function updateSoundButton() {
@@ -870,8 +866,6 @@
             attendees = names.filter(Boolean);
             totalAttendees = names.length;
             drawn = [];
-            actionLog = [];
-            logFileHandle = null;
             isAttendeesLoaded = true;
             document.getElementById("inputArea").classList.add("active");
             updateRemainingInfo();
@@ -1048,7 +1042,6 @@
                     showNotification("Log loaded successfully!");
                     logAction("uploadLog", { file: file.name });
 
-                    // Prompt to create log.json after loading
                     if (window.showSaveFilePicker) {
                         try {
                             logFileHandle = await window.showSaveFilePicker({
