@@ -1,1161 +1,776 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lucky Draw with Enhanced Features</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Roboto:wght@400;500&display=swap');
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lucky Draw — Firebase Auth + Firestore</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Roboto:wght@400;500&display=swap" rel="stylesheet" />
+  <!-- Preload winner video to avoid swap hiccup -->
+  <link rel="preload" as="video" href="Congrat.mp4" type="video/mp4">
+  <style>
+    :root { --fg:#f5f5f5; --bg:#1c2526; --gold-1:#ffd700; --gold-2:#b8860b; --blue-1:#4682b4; --card-radius:10px; --surface:rgba(255,255,255,.1); }
+    *{box-sizing:border-box}
+    body{margin:0;color:var(--fg);background:var(--bg);font-family:'Roboto',sans-serif;text-align:center;overflow:hidden}
 
-        body {
-            margin: 0;
-            font-family: 'Roboto', sans-serif;
-            color: #F5F5F5;
-            background-color: #1C2526;
-            text-align: center;
-            overflow: hidden;
-        }
+    #video-container{position:fixed;inset:0;z-index:-2}
+    #video-container video{width:100%;height:100%;object-fit:cover;opacity:.7}
 
-        #video-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -2;
-        }
+    .overlay{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:2rem;z-index:1}
+    h1{font-family:'Playfair Display',serif;font-weight:700;margin:0 0 1.5rem;font-size:clamp(2rem,6vw,5rem)}
+    #eventName{font-family:'Playfair Display',serif;color:var(--gold-1);margin:0 0 1.5rem;padding:.5rem;width:min(1500px,100%);border-radius:8px;font-size:clamp(1.5rem,6vw,5rem)}
+    #prizeBanner{font-size:clamp(1.25rem,4vw,3.5rem);margin-bottom:1.25rem;min-height:2.2rem}
 
-        #video-container::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.3);
-            z-index: -1;
-        }
+    button{font-size:1.05rem;padding:.8rem 1.5rem;margin:.5rem;cursor:pointer;border:none;border-radius:12px;background:linear-gradient(45deg,var(--gold-1),var(--gold-2));color:#1c2526;transition:transform .25s,box-shadow .25s,opacity .25s;touch-action:manipulation}
+    button:hover{transform:translateY(-1px) scale(1.03);box-shadow:0 4px 10px rgba(0,0,0,.35)}
+    button:disabled{opacity:.6;cursor:not-allowed}
+    .ghost{background:transparent;border:1px solid #446b72;color:#e8f1f2}
+    .full{width:100%}
 
-        #video-container video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
+    #winners{margin-top:2rem;display:flex;flex-wrap:wrap;justify-content:center;gap:1.5rem;font-size:2rem}
+    .card{width:15vw;height:7.5vw;min-width:150px;min-height:75px;perspective:1000px;transition:transform .3s}
+    .card-inner{position:relative;width:100%;height:100%;transition:transform .8s;transform-style:preserve-3d;will-change:transform}
+    .card.flipped .card-inner{transform:rotateY(180deg)}
+    .card-front,.card-back{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;backface-visibility:hidden;border-radius:var(--card-radius);font-size:1.5rem}
+    .card-front{background:linear-gradient(45deg,var(--gold-1),var(--gold-2))}
+    .card-back{background:linear-gradient(45deg,#1c2526,var(--blue-1));color:var(--fg);transform:rotateY(180deg)}
 
-        .overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 1;
-            padding: 2rem;
-            box-sizing: border-box;
-        }
+    #remainingInfo{position:absolute;top:20px;left:20px;background:rgba(0,0,0,.7);padding:.75rem;border-radius:8px;text-align:left;max-width:280px;font-size:.95rem;white-space:pre-line;z-index:2}
 
-        h1 {
-            font-family: 'Playfair Display', serif;
-            font-size: 5rem;
-            font-weight: 700;
-            margin-bottom: 1.5rem;
-            animation: fadeIn 1s ease-in;
-        }
+    #menuButton{position:absolute;top:20px;right:20px;z-index:3;width:48px;height:48px;display:grid;place-items:center;background:transparent;color:var(--fg);border:none;box-shadow:none}
 
-        #eventName {
-            font-family: 'Playfair Display', serif;
-            font-size: 5rem;
-            margin-bottom: 1.5rem;
-            padding: 0.5rem;
-            width: 100%;
-            max-width: 1500px;
-            color: #FFD700;
-            text-align: center;
-            border-radius: 8px;
-        }
+    #menu{position:absolute;top:80px;right:20px;background:rgba(28,37,38,.95);border-radius:12px;display:none;flex-direction:column;width:min(280px,92vw);max-height:65vh;overflow-y:auto;padding:12px;z-index:3;box-shadow:0 6px 16px rgba(0,0,0,.35);transform:translateX(100%);transition:transform .3s ease-in-out}
+    #menu.active{transform:translateX(0)}
+    #statusIndicator{font-size:.95rem;color:var(--gold-1);padding:8px 12px;text-align:left}
+    .menu-item{font-size:1rem;text-align:left;background:rgba(255,255,255,.12);color:var(--fg);border:none;border-radius:8px;padding:10px 14px;margin:4px 0;display:flex;align-items:center;gap:.5rem}
+    .menu-item:hover{background:rgba(255,255,255,.25)}
+    .menu-item input[type=file]{display:none}
+    .menu-info{font-size:.95rem;color:var(--fg);padding:8px 12px;text-align:left;opacity:.9}
 
-        #prizeBanner {
-            font-family: 'Roboto', sans-serif;
-            font-size: 3.5rem;
-            color: #FFFFFF;
-            margin-bottom: 1.5rem;
-            min-height: 2.5rem;
-            animation: fadeIn 1s ease-in;
-        }
+    #shuffleDisplay{font-size:2rem;color:var(--gold-1);margin-top:2rem;min-height:100px;display:none}
+    #notification{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:rgba(70,130,180,.95);color:var(--fg);padding:.75rem 1.25rem;border-radius:10px;font-size:1.05rem;display:none;z-index:4}
 
-        button {
-            font-family: 'Roboto', sans-serif;
-            font-size: 1.2rem;
-            padding: 0.8rem 1.5rem;
-            margin: 0.6rem;
-            cursor: pointer;
-            background: linear-gradient(45deg, #FFD700, #B8860B);
-            color: #1C2526;
-            border: none;
-            border-radius: 8px;
-            transition: transform 0.3s, box-shadow 0.3s;
-        }
+    #historyPage,#mainPage{display:none}
+    #historyPage.active,#mainPage.active{display:block}
 
-        button:hover {
-            transform: scale(1.05);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-        }
+    #historyContent{margin:30px auto;text-align:left;max-width:900px}
+    #historyContent table{width:100%;border-collapse:collapse;color:var(--fg);background:var(--surface)}
+    #historyContent th,#historyContent td{border:1px solid var(--fg);padding:10px;text-align:left}
+    #historyContent th{background:rgba(255,255,255,.25)}
 
-        #winners {
-            font-family: 'Roboto', sans-serif;
-            font-size: 2rem;
-            color: #F5F5F5;
-            margin-top: 2rem;
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 1.5rem;
-        }
+    #volumeControl{display:flex;align-items:center;padding:10px 16px;gap:.5rem}
+    #volumeControl input{width:100%}
 
-        .card {
-            width: 15vw;
-            height: 7.5vw;
-            min-width: 150px;
-            min-height: 75px;
-            perspective: 1000px;
-            transition: transform 0.3s;
-        }
+    #authOverlay{position:fixed;inset:0;background:rgba(0,0,0,.86);display:flex;align-items:center;justify-content:center;padding:16px;z-index:5}
+    #authCard{width:min(440px,92vw);background:#0f1415;color:#fff;border-radius:16px;padding:22px 22px 16px;box-shadow:0 10px 30px rgba(0,0,0,.6);text-align:left}
+    #authCard h2{margin:0 0 10px;font-weight:700;letter-spacing:.3px}
+    .field{display:flex;flex-direction:column;gap:6px;margin:10px 0}
+    .field input{padding:12px;border-radius:10px;border:1px solid #284145;background:#121b1c;color:#fff}
+    .row{display:flex;flex-direction:column;gap:8px}
+    .google{display:inline-flex;align-items:center;justify-content:center;gap:.6rem;background:#ffffff;color:#222;border:none;border-radius:10px;padding:.8rem 1rem}
+    .google img{width:18px;height:18px}
 
-        .card-inner {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            transition: transform 0.8s;
-            transform-style: preserve-3d;
-        }
+    /* Prize Manager overlay */
+    #prizeManagerOverlay{
+      position:fixed; inset:0; background:rgba(0,0,0,.86);
+      display:none; align-items:center; justify-content:center; padding:16px; z-index:6;
+    }
+    #prizeManager{
+      width:min(900px,96vw); background:#0f1415; color:#fff; border-radius:16px;
+      padding:18px; box-shadow:0 10px 30px rgba(0,0,0,.6); text-align:left;
+      max-height:84vh; overflow:auto;
+    }
+    #prizeManager h2{ margin:0 0 10px; font-weight:700; }
+    .pm-row{ display:grid; grid-template-columns: 1.2fr .6fr .6fr auto; gap:8px; margin:6px 0; align-items:center; }
+    .pm-row input{ padding:10px; border-radius:10px; border:1px solid #284145; background:#121b1c; color:#fff; }
+    .pm-row.locked input{ opacity:.6 }
+    .pm-actions{ display:flex; gap:6px; flex-wrap:wrap; }
+    .pm-toolbar{ display:flex; gap:8px; margin:10px 0 14px; align-items:center; flex-wrap:wrap; }
+    .pm-note{ opacity:.85; font-size:.92rem; margin-bottom:8px; }
+    .pm-divider{ height:1px; background:rgba(255,255,255,.12); margin:12px 0; }
 
-        .card.flipped .card-inner {
-            transform: rotateY(180deg);
-        }
-
-        .card-front,
-        .card-back {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            backface-visibility: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 10px;
-            font-size: 1.5rem;
-        }
-
-        .card-front {
-            background: linear-gradient(45deg, #FFD700, #B8860B);
-        }
-
-        .card-back {
-            background: linear-gradient(45deg, #1C2526, #4682B4);
-            transform: rotateY(180deg);
-            color: #F5F5F5;
-        }
-
-        .card:hover {
-            transform: scale(1.05);
-        }
-
-        #remainingInfo {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            font-size: 1rem;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 0.75rem;
-            border-radius: 8px;
-            text-align: left;
-            max-width: 250px;
-        }
-
-        #confirmButton {
-            display: none;
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            font-size: 1rem;
-            padding: 0.6rem 1.2rem;
-            background: linear-gradient(45deg, #4682B4, #1C2526);
-            color: #F5F5F5;
-            border: none;
-            border-radius: 8px;
-        }
-
-        #menuButton {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            z-index: 2;
-            font-size: 1.5rem;
-            background: rgba(255, 255, 255, 0.2);
-            color: #F5F5F5;
-            border: none;
-            padding: 0.5rem;
-            width: 48px;
-            height: 48px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-
-        #menuButton:hover {
-            background: rgba(255, 255, 255, 0.4);
-        }
-
-        #menu {
-            position: absolute;
-            top: 80px;
-            right: 20px;
-            background: rgba(28, 37, 38, 0.95);
-            border-radius: 8px;
-            display: none;
-            flex-direction: column;
-            z-index: 2;
-            padding: 12px;
-            width: 240px;
-            max-height: 60vh;
-            overflow-y: auto;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-            transform: translateX(100%);
-            transition: transform 0.3s ease-in-out;
-        }
-
-        #menu.active {
-            transform: translateX(0);
-        }
-
-        #statusIndicator {
-            font-size: 1rem;
-            color: #FFD700;
-            padding: 8px 16px;
-            margin: 4px 0;
-            text-align: left;
-        }
-
-        .menu-item {
-            font-size: 1rem;
-            background: rgba(255, 255, 255, 0.15);
-            color: #F5F5F5;
-            border: none;
-            padding: 10px 16px;
-            width: 100%;
-            box-sizing: border-box;
-            text-align: left;
-            border-radius: 4px;
-            margin: 4px 0;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            transition: background 0.3s;
-        }
-
-        .menu-item:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-
-        .menu-item input[type="file"] {
-            display: none;
-        }
-
-        #fileInput,
-        #prizeInput,
-        #logInput {
-            display: none;
-        }
-
-        #shuffleDisplay {
-            font-family: 'Roboto', sans-serif;
-            font-size: 2rem;
-            color: #FFD700;
-            margin-top: 2rem;
-            min-height: 100px;
-        }
-
-        #notification {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(70, 130, 180, 0.9);
-            color: #F5F5F5;
-            padding: 0.75rem 1.5rem;
-            border-radius: 8px;
-            font-size: 1.2rem;
-            display: none;
-            z-index: 3;
-        }
-
-        #historyPage,
-        #mainPage {
-            display: none;
-        }
-
-        #historyPage.active,
-        #mainPage.active {
-            display: block;
-        }
-
-        #historyContent {
-            margin: 30px;
-            text-align: left;
-            max-width: 900px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        #historyContent table {
-            width: 100%;
-            border-collapse: collapse;
-            color: #F5F5F5;
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        #historyContent th,
-        #historyContent td {
-            border: 1px solid #F5F5F5;
-            padding: 10px;
-            text-align: left;
-        }
-
-        #historyContent th {
-            background: rgba(255, 255, 255, 0.3);
-        }
-
-        #volumeControl {
-            display: flex;
-            align-items: center;
-            padding: 10px 16px;
-            margin: 4px 0;
-        }
-
-        #volumeControl input {
-            width: 100%;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-            }
-
-            to {
-                opacity: 1;
-            }
-        }
-
-        @media (max-width: 600px) {
-            h1 {
-                font-size: 3rem;
-            }
-
-            #eventName {
-                font-size: 2rem;
-            }
-
-            #prizeBanner {
-                font-size: 1.5rem;
-            }
-
-            button {
-                font-size: 1rem;
-                padding: 0.6rem 1.2rem;
-            }
-
-            #confirmButton {
-                font-size: 0.8rem;
-                padding: 0.4rem 0.8rem;
-            }
-
-            .card {
-                width: 40vw;
-                height: 20vw;
-            }
-
-            .card-front,
-            .card-back {
-                font-size: 1rem;
-            }
-
-            #winners {
-                font-size: 1.5rem;
-            }
-
-            #shuffleDisplay {
-                font-size: 1.5rem;
-            }
-
-            #notification {
-                font-size: 1rem;
-            }
-
-            #remainingInfo {
-                font-size: 0.9rem;
-                max-width: 200px;
-            }
-
-            #menuButton {
-                width: 40px;
-                height: 40px;
-                font-size: 1.2rem;
-            }
-
-            #menu {
-                top: 70px;
-                right: 10px;
-                width: 200px;
-            }
-
-            #statusIndicator,
-            .menu-item {
-                font-size: 0.9rem;
-                padding: 8px 12px;
-            }
-        }
-    </style>
+    @media (prefers-reduced-motion:reduce){.card-inner{transition:none}button{transition:none}}
+    @media (max-width:600px){#menuButton{width:44px;height:44px}.menu-item{font-size:.95rem;padding:10px 12px}#remainingInfo{font-size:.9rem;max-width:220px}button.full{width:100%}}
+  </style>
 </head>
-
 <body>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <audio id="drumroll" src="drumroll.mp3" preload="auto"></audio>
+  <audio id="applause" src="applause.mp3" preload="auto"></audio>
 
-    <audio id="drumroll" src="drumroll.mp3" preload="auto"></audio>
-    <audio id="applause" src="applause.mp3" preload="auto"></audio>
+  <div id="video-container">
+    <video id="backgroundVideo" autoplay muted loop>
+      <source src="LuckyDraw.mp4" type="video/mp4" />
+    </video>
+  </div>
 
-    <div id="video-container">
-        <video id="backgroundVideo" autoplay muted loop>
-            <source src="LuckyDraw.mp4" type="video/mp4">
-            Your browser does not support the video tag.
-        </video>
+  <button id="menuButton" title="Open Menu" aria-label="Open menu">☰</button>
+
+  <div id="menu">
+    <div id="signedInAs" class="menu-info" style="display:none"></div>
+    <div id="statusIndicator"></div>
+    <label class="menu-item" for="fileInput">📁 Upload Attendees</label>
+    <input type="file" id="fileInput" accept=".csv,.txt,.xlsx" />
+    <label class="menu-item" for="prizeInput">🎁 Upload Prizes</label>
+    <input type="file" id="prizeInput" accept=".csv,.xlsx" />
+    <button class="menu-item" id="managePrizesBtn">🧰 Manage Prizes</button>
+    <button class="menu-item" id="downloadWinnersBtn">⬇️ Download Winners</button>
+    <button class="menu-item" id="downloadRemainingBtn">📤 Download Remaining</button>
+    <button class="menu-item" id="downloadTemplatesBtn">📋 Download Templates</button>
+    <button class="menu-item" id="showHistoryBtn">📅 View History</button>
+    <button class="menu-item" id="changeEventNameBtn">✏️ Change Event Name</button>
+    <button class="menu-item ghost" id="resetAllBtn">🗑️ Reset All</button>
+    <button id="soundToggle" class="menu-item">🔊 Toggle Sound</button>
+    <div id="volumeControl" class="menu-item">
+      <span>🔉 Volume:</span>
+      <input type="range" id="volumeSlider" min="0" max="1" step="0.1" value="1" />
     </div>
+    <button class="menu-item ghost" id="signOutBtn" style="display:none">🚪 Sign out</button>
+  </div>
 
-    <button id="menuButton" title="Open Menu" aria-label="Open menu">☰</button>
-    <div id="menu">
-        <div id="statusIndicator"></div>
-        <label class="menu-item" for="fileInput">📁 Upload Attendees</label>
-        <input type="file" id="fileInput" accept=".csv,.txt,.xlsx" onchange="handleFile(event)">
-        <label class="menu-item" for="prizeInput">🎁 Upload Prizes</label>
-        <input type="file" id="prizeInput" accept=".csv,.xlsx" onchange="handlePrizeFile(event)">
-        <label class="menu-item" for="logInput">📜 Upload Log</label>
-        <input type="file" id="logInput" accept=".json" onchange="handleLogFile(event)">
-        <button class="menu-item" onclick="downloadWinners()">⬇️ Download Winners</button>
-        <button class="menu-item" onclick="downloadRemaining()">📤 Download Remaining</button>
-        <button class="menu-item" onclick="downloadTemplates()">📋 Download Templates</button>
-        <button class="menu-item" onclick="saveLog()">💾 Save Log</button>
-        <button class="menu-item" onclick="showHistory()">📅 View History</button>
-        <button class="menu-item" onclick="changeEventName()">✏️ Change Event Name</button>
-        <button class="menu-item" onclick="confirmReset()">🗑️ Reset All</button>
-        <button id="soundToggle" class="menu-item" onclick="toggleSound()">🔊 Toggle Sound</button>
-        <div id="volumeControl" class="menu-item">
-            <span>🔉 Volume:</span>
-            <input type="range" id="volumeSlider" min="0" max="1" step="0.1" value="1" onchange="adjustVolume()">
-        </div>
+  <div id="mainPage" class="active">
+    <div class="overlay">
+      <h1 id="eventName">Annual Dinner Lucky Draw</h1>
+      <div id="prizeBanner"></div>
+      <div id="inputArea" class="active">
+        <button id="drawButton" aria-label="Draw random winners" disabled>Draw Winners</button>
+      </div>
+      <div id="shuffleDisplay"></div>
+      <div id="winners"></div>
+      <button id="confirmButton" aria-label="Confirm selected winners" style="display:none">Confirm Winners</button>
     </div>
+    <div id="remainingInfo"></div>
+  </div>
 
-    <div id="mainPage" class="active">
-        <div class="overlay">
-            <h1 id="eventName">Annual Dinner Lucky Draw</h1>
-            <div id="prizeBanner"></div>
-            <div id="inputArea" class="active">
-                <button id="drawButton" onclick="startShuffle()" aria-label="Draw random winners" tabindex="0"
-                    disabled>Draw Winners</button>
-            </div>
-            <div id="shuffleDisplay"></div>
-            <div id="winners"></div>
-            <button id="confirmButton" onclick="confirmWinners()" aria-label="Confirm selected winners"
-                tabindex="0">Confirm Winners</button>
-        </div>
-        <div id="remainingInfo"></div>
+  <div id="historyPage">
+    <button class="menu-item" id="backToMainBtn">⬅ Back to Main</button>
+    <div id="historyContent"></div>
+  </div>
+
+  <div id="notification"></div>
+
+  <div id="authOverlay">
+    <div id="authCard">
+      <h2>Sign in to continue</h2>
+      <div class="field"><label>Email</label><input id="email" type="email" autocomplete="username" /></div>
+      <div class="field"><label>Password</label><input id="password" type="password" autocomplete="current-password" /></div>
+      <div class="row">
+        <button id="signInBtn" class="full">Sign in</button>
+        <button id="signUpBtn" class="ghost full" disabled title="Disabled by admin">Create account (disabled)</button>
+        <button id="resetPwBtn" class="ghost full">Forgot password</button>
+        <button id="googleBtn" class="google full" aria-label="Continue with Google"><img alt="Google" src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" />Continue with Google</button>
+      </div>
     </div>
+  </div>
 
-    <div id="historyPage">
-        <button class="menu-item" onclick="backToMain()">⬅ Back to Main</button>
-        <div id="historyContent"></div>
-    </div>
+  <!-- Prize Manager Overlay -->
+  <div id="prizeManagerOverlay" style="display:none">
+    <div id="prizeManager"></div>
+  </div>
 
-    <div id="notification"></div>
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'
+    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, sendPasswordResetEmail, signOut, GoogleAuthProvider, signInWithPopup } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'
+    import {
+      getFirestore, doc, setDoc, getDoc, onSnapshot, serverTimestamp,
+      collection, addDoc, query, orderBy, getDocs, deleteDoc,
+      writeBatch, limit, startAfter, documentId
+    } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'
 
-    <script>
-        let attendees = [];
-        let totalAttendees = 0;
-        let totalWinners = 0;
-        let drawn = [];
-        let currentWinners = [];
-        let actionLog = [];
-        let prizes = [];
-        let currentPrizeIndex = 0;
-        let shuffleInterval;
-        let isSoundEnabled = true;
-        let logFileHandle = null;
-        let isAttendeesLoaded = false;
-        let isPrizesLoaded = false;
-        const winnerVideo = "Congrat.mp4";
-        const idleVideo = "LuckyDraw.mp4";
+    const firebaseConfig = {
+    apiKey: "AIzaSyCyAJzma1KlYwtlnWEWXqvOuvwV0oLADyU",
+    authDomain: "luckydraw1-1c509.firebaseapp.com",
+    projectId: "luckydraw1-1c509",
+    storageBucket: "luckydraw1-1c509.firebasestorage.app",
+    messagingSenderId: "140472492940",
+    appId: "1:140472492940:web:ab9067e5575c6895976ca9",
+    measurementId: "G-WXFLTVF8EV"
+    };
 
-        function updateRemainingInfo() {
-            const remainingPrizes = prizes.length - currentPrizeIndex;
-            const remainingWinners = prizes.slice(currentPrizeIndex).reduce((sum, prize) => sum + prize.winners, 0);
-            let prizeDetails = [];
-            for (let i = currentPrizeIndex; i < prizes.length; i++) {
-                const { prize, winners } = prizes[i];
-                prizeDetails.push(`${prize}: ${winners} Winner${winners > 1 ? 's' : ''}`);
-            }
-            const remainingAttendees = totalAttendees - drawn.length;
-            document.getElementById("remainingInfo").innerText =
-                `Remaining Winners: ${remainingWinners}\nAttendees Remaining: ${remainingAttendees}\n\nRemaining Prizes:\n${prizeDetails.join('\n')}`;
-            const inputArea = document.getElementById("inputArea");
-            const remainingInfo = document.getElementById("remainingInfo");
-            if (inputArea.classList.contains("active")) {
-                remainingInfo.style.display = "block";
-                console.log("Showing #remainingInfo: inputArea is active");
-            } else {
-                remainingInfo.style.display = "none";
-                console.log("Hiding #remainingInfo: inputArea is not active");
-            }
-        }
+    const app = initializeApp(firebaseConfig)
+    const auth = getAuth(app)
+    const db = getFirestore(app)
 
-        function updateStatusIndicator() {
-            const status = document.getElementById("statusIndicator");
-            const messages = [];
-            if (isAttendeesLoaded) {
-                messages.push(`Attendees: ${totalAttendees} loaded`);
-            } else {
-                messages.push("Attendees: Not loaded");
-            }
-            if (isPrizesLoaded) {
-                messages.push(`Prizes: ${prizes.length} loaded`);
-            } else {
-                messages.push("Prizes: Not loaded");
-            }
-            status.innerText = messages.join(" | ");
-        }
+    // Added lastWinners/lastPrize to persist result view across refresh
+    const DEFAULT_STATE = {
+      attendees:[], prizes:[], drawn:[],
+      currentPrizeIndex:0, totalAttendees:0, totalWinners:0,
+      isAttendeesLoaded:false, isPrizesLoaded:false,
+      isSoundEnabled:true, volume:1, eventName:'Annual Dinner Lucky Draw',
+      isShowingResult:false, lastWinners:[], lastPrize:null
+    }
 
-        function updatePrizeBanner() {
-            const banner = document.getElementById("prizeBanner");
-            const drawButton = document.getElementById("drawButton");
-            if (currentPrizeIndex < prizes.length) {
-                const { prize, winners } = prizes[currentPrizeIndex];
-                banner.innerText = `${prize} (${winners} Winner${winners > 1 ? 's' : ''})`;
-                drawButton.disabled = !isAttendeesLoaded || !isPrizesLoaded || attendees.length === 0 || winners > attendees.length;
-            } else {
-                banner.innerText = prizes.length > 0 ? "All prizes awarded!" : "No prizes loaded.";
-                drawButton.disabled = true;
-            }
-        }
+    let state = { ...DEFAULT_STATE }
+    let currentWinners = []
+    const winnerVideo = 'Congrat.mp4'
+    const idleVideo = 'LuckyDraw.mp4'
+    const SHUFFLE_DURATION_MS = 5900
 
-        function playVideo(src, loop = false) {
-            const video = document.getElementById("backgroundVideo");
-            video.src = src;
-            video.loop = loop;
-            video.play().catch(error => {
-                console.error("Error playing video:", error);
-                showNotification("Error playing video. Check if video files exist.");
-            });
-        }
+    const $ = (id)=>document.getElementById(id)
+    const show = (el)=> el.style.display = ''
+    const hide = (el)=> el.style.display = 'none'
 
-        function adjustVolume() {
-            const volume = document.getElementById("volumeSlider").value;
-            document.getElementById("drumroll").volume = volume;
-            document.getElementById("applause").volume = volume;
-            logAction("adjustVolume", { volume });
-        }
+    function showNotification(message){ const n=$('notification'); n.innerText=message; n.style.display='block'; setTimeout(()=>{ n.style.display='none' },3000) }
+    function playVideo(src,loop=false){ const v=$('backgroundVideo'); v.src=src; v.loop=loop; v.play().catch(()=>{}) }
+    function updateSoundButton(){ $('soundToggle').innerText = state.isSoundEnabled ? '🔊 Toggle Sound' : '🔇 Toggle Sound' }
+    function updateStatusIndicator(){
+      const m=[];
+      m.push(state.isAttendeesLoaded?`Attendees: ${state.totalAttendees} loaded`:'Attendees: Not loaded');
+      m.push(state.isPrizesLoaded?`Prizes: ${state.prizes.length} loaded`:'Prizes: Not loaded');
+      $('statusIndicator').innerText=m.join(' | ')
+    }
 
-        function changeEventName() {
-            const newName = prompt("Enter new event name:", document.getElementById("eventName").innerText);
-            if (newName) {
-                document.getElementById("eventName").innerText = newName;
-                logAction("updateEventName", { name: newName });
-                showNotification("Event name updated!");
-            }
-            toggleMenu();
-        }
+    // Hold banner on drawn prize while isShowingResult === true
+    function updatePrizeBanner(){
+      const drawBtn=$('drawButton');
+      const displayIndex = state.isShowingResult
+        ? Math.max(0, state.currentPrizeIndex - 1)
+        : state.currentPrizeIndex;
 
-        async function saveLog() {
-            if (actionLog.length === 0) {
-                showNotification("No actions to log.");
-                return true;
-            }
-            if (!window.showSaveFilePicker) {
-                showNotification("File System Access API not supported. Please use a compatible browser (e.g., Chrome, Edge).");
-                return false;
-            }
-            try {
-                if (!logFileHandle) {
-                    logFileHandle = await window.showSaveFilePicker({
-                        suggestedName: 'log.json',
-                        types: [{ description: 'JSON Files', accept: { 'application/json': ['.json'] } }]
-                    });
-                }
-                const writable = await logFileHandle.createWritable();
-                await writable.write(JSON.stringify(actionLog, null, 2));
-                await writable.close();
-                showNotification("Action log saved to log.json!");
-                return true;
-            } catch (error) {
-                console.error('Error saving log:', error);
-                showNotification("Failed to save log file. Please select a valid file location.");
-                logFileHandle = null; // Reset handle to prompt again on next attempt
-                return false;
-            }
-        }
+      if(displayIndex < state.prizes.length){
+        const {prize,winners}=state.prizes[displayIndex];
+        $('prizeBanner').innerText = `${prize} (${winners} Winner${winners>1?'s':''})`;
+        const canDraw = state.isAttendeesLoaded
+          && state.isPrizesLoaded
+          && state.attendees.length>0
+          && winners<=state.attendees.length
+          && !state.isShowingResult; // disabled during result
+        drawBtn.disabled = !canDraw;
+      } else {
+        $('prizeBanner').innerText = state.prizes.length>0 ? 'All prizes awarded!' : 'No prizes loaded.';
+        drawBtn.disabled = true;
+      }
+    }
 
-        async function logAction(action, details) {
-            const timestamp = new Date().toLocaleString();
-            actionLog.push({ timestamp, action, details });
-            const success = await saveLog();
-            return success;
-        }
+    function updateRemainingInfo(){
+      const remainingWinners = state.prizes.slice(state.currentPrizeIndex)
+          .reduce((s,p)=>s+p.winners,0);
+      const prizeDetails = state.prizes.slice(state.currentPrizeIndex)
+          .map(p=>`${p.prize}: ${p.winners} Winner${p.winners>1?'s':''}`);
 
-        function updateSoundButton() {
-            document.getElementById("soundToggle").innerText = isSoundEnabled ? "🔊 Toggle Sound" : "🔇 Toggle Sound";
-        }
+      const remainingAttendees = state.attendees.length;
+      const box = $('remainingInfo');
+      box.innerText =
+          'Remaining Winners: '+remainingWinners+'\n' +
+          'Attendees Remaining: '+remainingAttendees+'\n\n' +
+          'Remaining Prizes:\n'+prizeDetails.join('\n');
 
-        function toggleSound() {
-            isSoundEnabled = !isSoundEnabled;
-            updateSoundButton();
-            logAction("toggleSound", { soundEnabled: isSoundEnabled });
-        }
+      const inHistory = $('historyPage').classList.contains('active');
+      box.style.display = (state.isShowingResult || inHistory) ? 'none' : '';
+    }
 
-        function showNotification(message) {
-            const notification = document.getElementById("notification");
-            notification.innerText = message;
-            notification.style.display = "block";
-            setTimeout(() => {
-                notification.style.display = "none";
-            }, 3000);
-        }
-
-        function toggleMenu() {
-            const menu = document.getElementById("menu");
-            if (menu.style.display === "flex") {
-                menu.classList.remove("active");
-                setTimeout(() => { menu.style.display = "none"; }, 300);
-            } else {
-                menu.style.display = "flex";
-                setTimeout(() => { menu.classList.add("active"); }, 10);
-            }
-        }
-
-        function showHistory() {
-            document.getElementById("mainPage").classList.remove("active");
-            document.getElementById("historyPage").classList.add("active");
-            document.getElementById("inputArea").classList.remove("active");
-            document.getElementById("remainingInfo").style.display = "none";
-            console.log("Hiding #remainingInfo: History page active");
-            const historyContent = document.getElementById("historyContent");
-            let html = "<h2>Draw History</h2>";
-            if (actionLog.length === 0) {
-                html += "<p>No draws recorded yet.</p>";
-            } else {
-                html += `
-                    <table>
-                        <tr>
-                            <th>Timestamp</th>
-                            <th>Prize</th>
-                            <th>Winners</th>
-                        </tr>`;
-                actionLog.filter(log => log.action === "drawWinners").forEach(log => {
-                    html += `
-                        <tr>
-                            <td>${log.timestamp}</td>
-                            <td>${log.details.prize}</td>
-                            <td>${log.details.winners.join(", ")}</td>
-                        </tr>`;
-                });
-                html += "</table>";
-            }
-            historyContent.innerHTML = html;
-            toggleMenu();
-            logAction("viewHistory", {});
-        }
-
-        function backToMain() {
-            document.getElementById("historyPage").classList.remove("active");
-            document.getElementById("mainPage").classList.add("active");
-            document.getElementById("inputArea").classList.add("active");
-            updateRemainingInfo();
-            console.log("Showing #remainingInfo: Back to main page, inputArea active");
-            logAction("backToMain", {});
-        }
-
-        function confirmReset() {
-            if (confirm("Are you sure you want to reset all data? This cannot be undone.")) {
-                attendees = [];
-                totalAttendees = 0;
-                totalWinners = 0;
-                drawn = [];
-                currentWinners = [];
-                actionLog = [];
-                prizes = [];
-                currentPrizeIndex = 0;
-                logFileHandle = null;
-                isAttendeesLoaded = false;
-                isPrizesLoaded = false;
-                document.getElementById("eventName").innerText = "Annual Dinner Lucky Draw";
-                document.getElementById("inputArea").classList.add("active");
-                updateRemainingInfo();
-                updatePrizeBanner();
-                updateStatusIndicator();
-                document.getElementById("winners").innerHTML = "";
-                document.getElementById("confirmButton").style.display = "none";
-                document.getElementById("inputArea").style.display = "block";
-                document.getElementById("shuffleDisplay").style.display = "none";
-                playVideo(idleVideo, true);
-                showNotification("All data reset!");
-                console.log("Showing #remainingInfo: Reset completed, inputArea active");
-                logAction("resetAll", {});
-            }
-        }
-
-        function shuffleNames() {
-            if (attendees.length === 0) return "";
-            const randomIndex = Math.floor(Math.random() * attendees.length);
-            return `🎲 ${attendees[randomIndex]} 🎲`;
-        }
-
-        function startShuffle() {
-            if (currentPrizeIndex >= prizes.length) {
-                showNotification("All prizes have been awarded.");
-                return;
-            }
-            const { winners } = prizes[currentPrizeIndex];
-            if (attendees.length === 0) {
-                showNotification("All attendees have already been drawn.");
-                return;
-            }
-            if (winners > attendees.length) {
-                showNotification(`Only ${attendees.length} attendees remaining for ${winners} winners.`);
-                return;
-            }
-            if (isSoundEnabled) {
-                const drumroll = document.getElementById("drumroll");
-                drumroll.currentTime = 0;
-                drumroll.play().catch(error => {
-                    console.error("Error playing drumroll:", error);
-                    showNotification("Error playing sound. Check if audio files exist.");
-                });
-            }
-            const shuffleDisplay = document.getElementById("shuffleDisplay");
-            document.getElementById("winners").innerHTML = "";
-            document.getElementById("inputArea").style.display = "none";
-            document.getElementById("inputArea").classList.remove("active");
-            document.getElementById("remainingInfo").style.display = "none";
-            console.log("Hiding #remainingInfo: Shuffling started");
-            shuffleDisplay.style.display = "block";
-            shuffleInterval = setInterval(() => {
-                shuffleDisplay.innerHTML = shuffleNames();
-            }, 150);
-            setTimeout(() => {
-                clearInterval(shuffleInterval);
-                shuffleDisplay.style.display = "none";
-                drawWinners();
-            }, 3000);
-        }
-
-        function drawWinners() {
-            const { prize, winners, value } = prizes[currentPrizeIndex];
-            const shuffled = attendees.sort(() => 0.5 - Math.random());
-            const selected = shuffled.slice(0, winners);
-            currentWinners = selected;
-            attendees = attendees.filter(name => !selected.includes(name));
-            drawn.push(...selected.map(name => ({ name, prize, timestamp: new Date().toLocaleString() })));
-            updateRemainingInfo();
-            updatePrizeBanner();
-            updateStatusIndicator();
-            const winnersDiv = document.getElementById("winners");
-            winnersDiv.innerHTML = selected.map(name =>
-                `<div class="card" tabindex="0" role="region" aria-label="Winner: ${name}">
-                    <div class="card-inner">
-                        <div class="card-front"></div>
-                        <div class="card-back">🎉 ${name} 🎉</div>
-                    </div>
-                </div>`
-            ).join("");
-            const cards = document.querySelectorAll('.card');
-            cards.forEach((card, index) => {
-                setTimeout(() => {
-                    card.classList.add('flipped');
-                }, index * 300);
-            });
-            document.getElementById("confirmButton").style.display = "block";
-            document.getElementById("inputArea").style.display = "none";
-            document.getElementById("inputArea").classList.remove("active");
-            document.getElementById("remainingInfo").style.display = "none";
-            console.log("Hiding #remainingInfo: Winners displayed");
-            playVideo(winnerVideo, false);
-            if (isSoundEnabled) {
-                const applause = document.getElementById("applause");
-                confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
-                applause.currentTime = 0;
-                applause.play().catch(error => {
-                    console.error("Error playing applause:", error);
-                    showNotification("Error playing sound. Check if audio files exist.");
-                });
-            }
-            logAction("drawWinners", { prize, winners: selected, count: winners, value });
-            downloadWinners();
-            downloadRemaining();
-        }
-
-        function confirmWinners() {
-            currentWinners = [];
-            document.getElementById("winners").innerHTML = "";
-            document.getElementById("confirmButton").style.display = "none";
-            document.getElementById("inputArea").style.display = "block";
-            document.getElementById("inputArea").classList.add("active");
-            document.getElementById("shuffleDisplay").style.display = "none";
-            currentPrizeIndex++;
-            updatePrizeBanner();
-            updateStatusIndicator();
-            updateRemainingInfo();
-            playVideo(idleVideo, true);
-            console.log("Showing #remainingInfo: Confirm winners, inputArea active");
-            logAction("confirmWinners", {});
-        }
-
-        async function handleFile(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const ext = file.name.split('.').pop().toLowerCase();
-            if (!['csv', 'txt', 'xlsx'].includes(ext)) {
-                showNotification("Invalid file format. Please upload a .txt, .csv, or .xlsx file.");
-                return;
-            }
-            if (file.size > 1024 * 1024) {
-                showNotification("File is too large. Maximum size is 1MB.");
-                return;
-            }
-            const reader = new FileReader();
-            reader.onerror = function () {
-                showNotification("Error reading attendee file. Please try again.");
-            };
-            if (ext === 'xlsx') {
-                reader.onload = async function (e) {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-                    const names = rows[0][0].toLowerCase() === "name" ? rows.slice(1).map(row => row[0]) : rows.map(row => row[0]);
-                    await processAttendees(names, file.name);
-                };
-                reader.readAsArrayBuffer(file);
-            } else {
-                reader.onload = async function (e) {
-                    const lines = e.target.result.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-                    const names = lines[0].toLowerCase() === "name" ? lines.slice(1) : lines;
-                    await processAttendees(names, file.name);
-                };
-                reader.readAsText(file);
-            }
-        }
-
-        async function processAttendees(names, filename) {
-            if (names.length === 0) {
-                showNotification("No valid attendee names found in the file.");
-                return;
-            }
-            const success = await logAction("uploadAttendees", { file: filename, count: names.length, names });
-            if (!success) {
-                showNotification("Attendee upload canceled due to log file error.");
-                return;
-            }
-            attendees = names.filter(Boolean);
-            totalAttendees = names.length;
-            drawn = [];
-            isAttendeesLoaded = true;
-            document.getElementById("inputArea").classList.add("active");
-            updateRemainingInfo();
-            updatePrizeBanner();
-            updateStatusIndicator();
-            console.log("Showing #remainingInfo: Attendees processed, inputArea active");
-            showNotification(`Loaded ${attendees.length} attendees!`);
-        }
-
-        async function handlePrizeFile(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const ext = file.name.split('.').pop().toLowerCase();
-            if (!['csv', 'xlsx'].includes(ext)) {
-                showNotification("Invalid file format. Please upload a .csv or .xlsx file.");
-                return;
-            }
-            if (file.size > 1024 * 1024) {
-                showNotification("File is too large. Maximum size is 1MB.");
-                return;
-            }
-            const reader = new FileReader();
-            reader.onerror = function () {
-                showNotification("Error reading prize file. Please try again.");
-            };
-            if (ext === 'xlsx') {
-                reader.onload = async function (e) {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const rows = XLSX.utils.sheet_to_json(sheet, { header: ['prize', 'winners', 'value'] });
-                    await processPrizes(rows, file.name);
-                };
-                reader.readAsArrayBuffer(file);
-            } else {
-                reader.onload = async function (e) {
-                    const lines = e.target.result.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-                    const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
-                    if (headers[0] !== "prize" || headers[1] !== "winners") {
-                        showNotification("Invalid CSV format. Expected headers: Prize,Winners,Value");
-                        return;
-                    }
-                    const rows = lines.slice(1).map(line => {
-                        const [prize, winners, value] = line.split(',').map(s => s.trim());
-                        return { prize, winners, value };
-                    });
-                    await processPrizes(rows, file.name);
-                };
-                reader.readAsText(file);
-            }
-        }
-
-        async function processPrizes(rows, filename) {
-            const parsedPrizes = rows.map(row => {
-                const winnerCount = parseInt(row.winners);
-                const prizeValue = row.value ? parseFloat(row.value) : null;
-                if (!row.prize || isNaN(winnerCount) || winnerCount < 1) {
-                    showNotification(`Invalid prize data: ${JSON.stringify(row)}`);
-                    return null;
-                }
-                return { prize: row.prize, winners: winnerCount, value: prizeValue };
-            }).filter(p => p !== null);
-            if (parsedPrizes.length === 0) {
-                showNotification("No valid prizes found in the file.");
-                return;
-            }
-            const success = await logAction("uploadPrizes", { file: filename, count: parsedPrizes.length, prizes: parsedPrizes });
-            if (!success) {
-                showNotification("Prize upload canceled due to log file error.");
-                return;
-            }
-            prizes = parsedPrizes;
-            totalWinners = prizes.reduce((sum, prize) => sum + prize.winners, 0);
-            currentPrizeIndex = 0;
-            isPrizesLoaded = true;
-            document.getElementById("inputArea").classList.add("active");
-            updatePrizeBanner();
-            updateStatusIndicator();
-            updateRemainingInfo();
-            document.getElementById("drawButton").disabled = !isAttendeesLoaded || attendees.length === 0;
-            console.log("Showing #remainingInfo: Prizes processed, inputArea active");
-            showNotification(`Loaded ${prizes.length} prizes!`);
-        }
-
-        async function handleLogFile(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            if (!file.name.endsWith('.json')) {
-                showNotification("Invalid file format. Please upload a .json file.");
-                return;
-            }
-            if (file.size > 1024 * 1024) {
-                showNotification("File is too large. Maximum size is 1MB.");
-                return;
-            }
-            const reader = new FileReader();
-            reader.onload = async function (e) {
-                try {
-                    const log = JSON.parse(e.target.result);
-                    if (!Array.isArray(log)) {
-                        showNotification("Invalid log format. Expected an array of actions.");
-                        return;
-                    }
-                    actionLog = [];
-                    attendees = [];
-                    drawn = [];
-                    prizes = [];
-                    currentPrizeIndex = 0;
-                    totalAttendees = 0;
-                    totalWinners = 0;
-                    isAttendeesLoaded = false;
-                    isPrizesLoaded = false;
-                    for (const action of log) {
-                        if (action.action === "uploadAttendees" && action.details.names) {
-                            attendees = [...action.details.names];
-                            totalAttendees = action.details.count || attendees.length;
-                            isAttendeesLoaded = totalAttendees > 0;
-                            actionLog.push(action);
-                        } else if (action.action === "uploadPrizes" && action.details.prizes) {
-                            prizes = action.details.prizes.map(p => ({
-                                prize: p.prize,
-                                winners: parseInt(p.winners),
-                                value: p.value ? parseFloat(p.value) : null
-                            }));
-                            totalWinners = prizes.reduce((sum, prize) => sum + prize.winners, 0);
-                            isPrizesLoaded = prizes.length > 0;
-                            currentPrizeIndex = 0;
-                            actionLog.push(action);
-                        } else if (action.action === "drawWinners" && action.details.winners) {
-                            const winners = action.details.winners;
-                            drawn.push(...winners.map(name => ({
-                                name,
-                                prize: action.details.prize,
-                                timestamp: action.timestamp
-                            })));
-                            attendees = attendees.filter(name => !winners.includes(name));
-                            currentPrizeIndex++;
-                            actionLog.push(action);
-                        } else if (action.action === "confirmWinners" || action.action === "resetAll" ||
-                            action.action === "viewHistory" || action.action === "backToMain") {
-                            actionLog.push(action);
-                        } else if (action.action === "toggleSound") {
-                            isSoundEnabled = action.details.soundEnabled;
-                            updateSoundButton();
-                            actionLog.push(action);
-                        } else if (action.action === "adjustVolume") {
-                            document.getElementById("volumeSlider").value = action.details.volume;
-                            adjustVolume();
-                            actionLog.push(action);
-                        } else if (action.action === "downloadWinners" || action.action === "downloadRemaining" ||
-                            action.action === "downloadTemplates" || action.action === "uploadLog" || action.action === "updateEventName") {
-                            if (action.action === "updateEventName") {
-                                document.getElementById("eventName").innerText = action.details.name;
-                            }
-                            actionLog.push(action);
-                        } else {
-                            console.warn("Skipping invalid or incomplete log action:", action);
-                        }
-                    }
-                    if (isAttendeesLoaded && totalAttendees !== attendees.length + drawn.length) {
-                        showNotification("Warning: Inconsistent attendee count in log.");
-                    }
-                    if (isPrizesLoaded && currentPrizeIndex > prizes.length) {
-                        showNotification("Warning: Invalid prize index in log.");
-                        currentPrizeIndex = prizes.length;
-                    }
-                    document.getElementById("inputArea").classList.add("active");
-                    updateRemainingInfo();
-                    updatePrizeBanner();
-                    updateStatusIndicator();
-                    console.log("Showing #remainingInfo: Log loaded, inputArea active");
-                    showNotification("Log loaded successfully!");
-                    const success = await logAction("uploadLog", { file: file.name });
-                    if (!success) {
-                        showNotification("Log upload completed, but failed to save new log file.");
-                        return;
-                    }
-                    if (window.showSaveFilePicker) {
-                        try {
-                            logFileHandle = await window.showSaveFilePicker({
-                                suggestedName: 'log.json',
-                                types: [{ description: 'JSON Files', accept: { 'application/json': ['.json'] } }]
-                            });
-                            await saveLog();
-                            showNotification("Log file created successfully!");
-                        } catch (error) {
-                            console.error('Error creating log file:', error);
-                            showNotification("Log upload completed, but failed to create new log file.");
-                            logFileHandle = null;
-                        }
-                    } else {
-                        showNotification("File System Access API not available. Please use a compatible browser.");
-                    }
-                } catch (error) {
-                    console.error("Error parsing log file:", error);
-                    showNotification("Error reading log file. Please upload a valid JSON file.");
-                }
-            };
-            reader.onerror = function () {
-                showNotification("Error reading log file. Please try again.");
-            };
-            reader.readAsText(file);
-        }
-
-        function downloadWinners() {
-            if (drawn.length === 0) {
-                showNotification("No winners drawn yet.");
-                return;
-            }
-            const timestamp = new Date().toLocaleString();
-            const csv = `Name,Prize,Timestamp\n` +
-                drawn.map(w => `"${w.name}","${w.prize}","${w.timestamp}"`).join("\n");
-            downloadFile("winners.csv", csv);
-            showNotification("Winners list downloaded!");
-            logAction("downloadWinners", { count: drawn.length });
-        }
-
-        function downloadRemaining() {
-            if (attendees.length === 0) {
-                showNotification("No remaining attendees.");
-                return;
-            }
-            const timestamp = new Date().toLocaleString();
-            const csv = `Name\n` + attendees.map(name => `"${name}"`).join("\n");
-            downloadFile("remaining.csv", csv);
-            showNotification("Remaining attendees list downloaded!");
-            logAction("downloadRemaining", { count: attendees.length });
-        }
-
-        function downloadTemplates() {
-            const attendeeTemplate = "Name\nJohn Doe\nJane Smith\n";
-            const prizeTemplate = "Prize,Winners,Value\nGrand Prize,1,1000\nSecond Prize,2,500\n";
-            downloadFile("attendees_template.csv", attendeeTemplate);
-            downloadFile("prizes_template.csv", prizeTemplate);
-            const attendeeWB = XLSX.utils.book_new();
-            const attendeeWS = XLSX.utils.json_to_sheet([{ Name: "John Doe" }, { Name: "Jane Smith" }]);
-            XLSX.utils.book_append_sheet(attendeeWB, attendeeWS, "Attendees");
-            const prizeWB = XLSX.utils.book_new();
-            const prizeWS = XLSX.utils.json_to_sheet([
-                { Prize: "Grand Prize", Winners: 1, Value: 1000 },
-                { Prize: "Second Prize", Winners: 2, Value: 500 }
-            ]);
-            XLSX.utils.book_append_sheet(prizeWB, prizeWS, "Prizes");
-            const attendeeXLSX = XLSX.write(attendeeWB, { bookType: "xlsx", type: "array" });
-            const prizeXLSX = XLSX.write(prizeWB, { bookType: "xlsx", type: "array" });
-            downloadFile("attendees_template.xlsx", new Blob([attendeeXLSX], { type: "application/octet-stream" }));
-            downloadFile("prizes_template.xlsx", new Blob([prizeXLSX], { type: "application/octet-stream" }));
-            showNotification("Template files downloaded!");
-            logAction("downloadTemplates", {});
-        }
-
-        function downloadFile(filename, content) {
-            const type = filename.endsWith('.xlsx') ? "application/octet-stream"
-                        : filename.endsWith('.csv') ? "text/csv;charset=utf-8"
-                        : "text/plain;charset=utf-8";
-            const blob = new Blob([content], { type });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
-        document.getElementById("menuButton").addEventListener("click", toggleMenu);
-
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-                const active = document.activeElement;
-                if (active.id === 'confirmButton') confirmWinners();
-                if (active.id === 'drawButton') startShuffle();
-                if (active.id === 'menuButton') toggleMenu();
-            }
+    function renderResultUIFromState(){
+      if(!state.isShowingResult) return;
+      $('confirmButton').style.display='block';
+      $('inputArea').style.display='none';
+      $('shuffleDisplay').style.display='none';
+      $('menuButton').style.display='none';
+      if(state.lastWinners && state.lastWinners.length && $('winners').children.length===0){
+        $('winners').innerHTML = state.lastWinners.map(name =>
+          `<div class="card" aria-label="Winner: ${name}">
+             <div class="card-inner"><div class="card-front"></div><div class="card-back">🎉 ${name} 🎉</div></div>
+           </div>`).join('');
+        requestAnimationFrame(()=>{
+          document.querySelectorAll('.card').forEach(c=> c.classList.add('flipped'));
         });
+      }
+    }
 
-        updateRemainingInfo();
-        document.getElementById("inputArea").classList.add("active");
-        updateSoundButton();
-        updatePrizeBanner();
-        updateStatusIndicator();
-        playVideo(idleVideo, true);
-        console.log("Showing #remainingInfo: Initial page load, inputArea active");
-    </script>
+    function renderAll(){
+      updatePrizeBanner(); updateStatusIndicator(); updateRemainingInfo(); updateSoundButton();
+      $('eventName').innerText=state.eventName;
+      $('volumeSlider').value=state.volume; $('drumroll').volume=state.volume; $('applause').volume=state.volume;
+      renderResultUIFromState();
+    }
+
+    const userStateRef = (uid)=> doc(db,'users',uid,'app','state')
+    const userActionsCol = (uid)=> collection(db,'users',uid,'actions')
+
+    async function saveState(uid,partial){
+      state={...state,...(partial||{})}
+      const totals={ totalAttendees:state.attendees.length, totalWinners:state.prizes.reduce((s,p)=>s+p.winners,0) }
+      await setDoc(userStateRef(uid),{...state,...totals,updatedAt:serverTimestamp()},{merge:true})
+      renderAll()
+    }
+    async function loadState(uid){
+      const snap=await getDoc(userStateRef(uid))
+      if(snap.exists()){
+        state={...state,...snap.data()}
+      } else {
+        await setDoc(userStateRef(uid),{...state,createdAt:serverTimestamp(),updatedAt:serverTimestamp()},{merge:true})
+      }
+      renderAll()
+    }
+    async function logAction(uid,action,details){ try{ await addDoc(userActionsCol(uid),{ action, details:details||{}, at:serverTimestamp() }) }catch(e){} }
+    function subscribeState(uid){ return onSnapshot(userStateRef(uid),(snap)=>{ if(snap.exists()){ const server=snap.data(); state={...state,...server}; renderAll() } }) }
+
+    let unsubState=null
+    onAuthStateChanged(auth,async(user)=>{
+      if(user){
+        hide($('authOverlay'))
+        show($('signOutBtn'))
+        const label = `Signed in as ${user.email||'Google User'}`
+        const s=$('signedInAs'); s.textContent=label; s.style.display='block'
+
+        await loadState(user.uid)
+        if(unsubState) unsubState();
+        unsubState=subscribeState(user.uid)
+
+        $('inputArea').classList.add('active')
+        $('mainPage').classList.add('active')
+        $('drawButton').disabled=true
+        renderAll()
+        playVideo(state.isShowingResult ? winnerVideo : idleVideo, !state.isShowingResult)
+      } else {
+        show($('authOverlay'))
+        hide($('signOutBtn'))
+        const s=$('signedInAs'); s.style.display='none'; s.textContent=''
+        state={ ...DEFAULT_STATE }
+        renderAll()
+        playVideo(idleVideo,true)
+      }
+    })
+
+    async function deleteCollectionBatched(collRef, batchSize = 400) {
+      let cursor = null;
+      while (true) {
+        const qy = cursor
+          ? query(collRef, orderBy(documentId()), startAfter(cursor), limit(batchSize))
+          : query(collRef, orderBy(documentId()), limit(batchSize));
+        const snap = await getDocs(qy);
+        if (snap.empty) break;
+
+        const batch = writeBatch(db);
+        snap.docs.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+
+        cursor = snap.docs[snap.docs.length - 1];
+        await new Promise(r => setTimeout(r, 0)); // yield
+      }
+    }
+
+    $('signInBtn').onclick=async()=>{ const email=$('email').value.trim(), pw=$('password').value; if(!email||!pw) return showNotification('Enter email & password.'); try{ await signInWithEmailAndPassword(auth,email,pw) }catch(e){ showNotification(e.message) } }
+    $('signUpBtn').onclick=()=> showNotification('Account creation is disabled. Please sign in with an existing account or use Google.')
+    $('resetPwBtn').onclick=async()=>{ const email=$('email').value.trim(); if(!email) return showNotification('Enter your email first.'); try{ await sendPasswordResetEmail(auth,email); showNotification('Password reset email sent.') }catch(e){ showNotification(e.message) } }
+    $('googleBtn').onclick=async()=>{ try{ const provider=new GoogleAuthProvider(); await signInWithPopup(auth,provider) }catch(e){ showNotification(e.message) } }
+    $('signOutBtn').onclick=async()=>{ try{ await signOut(auth) }catch(e){ showNotification(e.message) } }
+
+    const readFileAsText=(file)=> new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsText(file) })
+
+    function toggleMenu(){ const m=$('menu'); if(m.style.display==='flex'){ m.classList.remove('active'); setTimeout(()=>{ m.style.display='none' },300) } else { m.style.display='flex'; setTimeout(()=>{ m.classList.add('active') },10) } }
+    $('menuButton').addEventListener('click',toggleMenu)
+
+    $('drawButton').onclick=()=> startShuffle()
+
+    function shuffleNames(){ if(state.attendees.length===0) return ''; const i=Math.floor(Math.random()*state.attendees.length); return `🎲 ${state.attendees[i]} 🎲` }
+    function getDrumrollDurationMs(){ return SHUFFLE_DURATION_MS }
+
+    function startShuffle(){
+      const displayIndex = state.isShowingResult ? Math.max(0, state.currentPrizeIndex - 1) : state.currentPrizeIndex;
+      if(displayIndex>=state.prizes.length) return showNotification('All prizes have been awarded.');
+      const {winners}=state.prizes[displayIndex]
+      if(state.attendees.length===0) return showNotification('All attendees have already been drawn.');
+      if(winners>state.attendees.length) return showNotification(`Only ${state.attendees.length} attendees remaining for ${winners} winners.`);
+
+      const d=$('drumroll');
+      $('winners').innerHTML=''
+      $('inputArea').style.display='none'
+      $('inputArea').classList.remove('active')
+      state.isShowingResult=false
+      updateRemainingInfo()
+      $('shuffleDisplay').style.display='block'
+      $('menuButton').style.display=''
+
+      const interval = setInterval(()=>{ $('shuffleDisplay').innerHTML=shuffleNames() },150)
+
+      let ended = false
+      const endShuffle = ()=>{ if(ended) return; ended=true; clearInterval(interval); /* do NOT hide shuffle here */ drawWinners() }
+
+      const durationMs = getDrumrollDurationMs()
+      let timeoutId
+      if(state.isSoundEnabled){
+        try{ d.currentTime = 0; d.play().catch(()=>{}) }catch(_){}
+        timeoutId = setTimeout(()=>{ try{ d.pause(); d.currentTime=0 }catch(_){}; endShuffle() }, durationMs)
+      } else {
+        timeoutId = setTimeout(endShuffle, durationMs)
+      }
+      d.onended = ()=>{ clearTimeout(timeoutId); endShuffle() }
+    }
+
+    // Remove only N occurrences (handles duplicate names)
+    function removeSelected(attendees, selected){
+      const need = new Map();
+      selected.forEach(n => need.set(n, (need.get(n)||0)+1));
+      const out = [];
+      for(const n of attendees){
+        const c = need.get(n) || 0;
+        if(c>0) need.set(n, c-1);
+        else out.push(n);
+      }
+      return out;
+    }
+
+    async function drawWinners(){
+      const user=auth.currentUser; if(!user) return;
+
+      const displayIndex = state.isShowingResult ? Math.max(0, state.currentPrizeIndex - 1) : state.currentPrizeIndex;
+      const {prize,winners,value}=state.prizes[displayIndex]
+
+      // pick now (Fisher–Yates)
+      const pool=[...state.attendees];
+      for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]] }
+      const selected=pool.slice(0,winners);
+      currentWinners=selected;
+
+      // === REVEAL IMMEDIATELY (no network wait) ===
+      $('winners').innerHTML = selected.map(name =>
+        `<div class="card" aria-label="Winner: ${name}">
+           <div class="card-inner"><div class="card-front"></div><div class="card-back">🎉 ${name} 🎉</div></div>
+         </div>`).join('');
+
+      $('confirmButton').style.display='block'
+      $('inputArea').style.display='none'
+      $('menuButton').style.display='none'
+      state.isShowingResult = true; // keep draw disabled & hold banner on previous prize
+      updatePrizeBanner();
+      updateRemainingInfo()
+      playVideo(winnerVideo,false)
+      if(state.isSoundEnabled){
+        confetti({ particleCount:150, spread:90, origin:{ y:.6 } })
+        const a=$('applause'); a.currentTime=0; a.play().catch(()=>{})
+      }
+
+      // flip next frame; hide shuffle AFTER winners are in
+      requestAnimationFrame(()=>{
+        $('shuffleDisplay').style.display='none';
+        void document.body.offsetHeight;
+        document.querySelectorAll('.card').forEach((c,i)=> setTimeout(()=> c.classList.add('flipped'), i*150))
+      })
+
+      // === PERSIST IN BACKGROUND (advance index now to lock the prize) ===
+      const remaining = removeSelected(state.attendees, selected);
+      const drawnAppend = selected.map(name=>({name,prize,timestamp:new Date().toISOString()}));
+      const newDrawn = [...state.drawn, ...drawnAppend];
+
+      saveState(user.uid,{
+        attendees: remaining,
+        drawn: newDrawn,
+        isShowingResult: true,
+        currentPrizeIndex: state.currentPrizeIndex + 1, // consume prize immediately
+        lastWinners: selected,
+        lastPrize: prize
+      }).catch(()=> showNotification('Save failed, please retry'));
+
+      try {
+        const winnersCsv = 'Name,Prize,Timestamp\n' + newDrawn.map(w=>`"${w.name}","${w.prize}","${w.timestamp}"`).join('\n');
+        downloadFile('winners.csv', winnersCsv);
+        const remainingCsv = 'Name\n' + remaining.map(n=>`"${n}"`).join('\n');
+        downloadFile('remaining.csv', remainingCsv);
+      } catch(e){}
+
+      logAction(user.uid,'drawWinners',{ prize, winners:selected, count:winners, value }).catch(()=>{})
+    }
+
+    $('confirmButton').onclick=async()=>{
+      const user=auth.currentUser; if(!user) return;
+      await saveState(user.uid,{ isShowingResult:false, lastWinners:[], lastPrize:null })
+      currentWinners=[]
+      $('winners').innerHTML=''
+      $('confirmButton').style.display='none'
+      $('inputArea').style.display='block'
+      $('shuffleDisplay').style.display='none'
+      $('menuButton').style.display=''
+      updateRemainingInfo()
+      playVideo(idleVideo,true)
+      await logAction(user.uid,'confirmWinners',{})
+    }
+
+    $('fileInput').onchange=async(e)=>{
+      const user=auth.currentUser; if(!user) return showNotification('Please sign in.');
+      const file=e.target.files[0]; if(!file) return;
+      const ext=file.name.split('.').pop().toLowerCase();
+      if(!['csv','txt','xlsx'].includes(ext)) return showNotification('Upload .txt, .csv or .xlsx');
+      if(ext==='xlsx'){
+        const arrBuf=await file.arrayBuffer();
+        const wb=XLSX.read(new Uint8Array(arrBuf),{type:'array'});
+        const sheet=wb.Sheets[wb.SheetNames[0]];
+        const rows=XLSX.utils.sheet_to_json(sheet,{header:1});
+        const names = rows.length
+          ? ((rows[0] && String(rows[0][0]).toLowerCase()==='name')
+            ? rows.slice(1).map(r=>String(r[0]).trim()).filter(Boolean)
+            : rows.map(r=>String(r[0]).trim()).filter(Boolean))
+          : [];
+        await saveState(user.uid,{ attendees:names, totalAttendees:names.length, drawn:[], isAttendeesLoaded:true, lastWinners:[], lastPrize:null, isShowingResult:false });
+        await logAction(user.uid,'uploadAttendees',{ file:file.name, count:names.length });
+        showNotification(`Loaded ${names.length} attendees!`)
+      } else {
+        const txt=await readFileAsText(file);
+        const lines=txt.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+        const names = lines.length? ((lines[0].toLowerCase()==='name')? lines.slice(1) : lines) : [];
+        await saveState(user.uid,{ attendees:names, totalAttendees:names.length, drawn:[], isAttendeesLoaded:true, lastWinners:[], lastPrize:null, isShowingResult:false });
+        await logAction(user.uid,'uploadAttendees',{ file:file.name, count:names.length });
+        showNotification(`Loaded ${names.length} attendees!`)
+      }
+      toggleMenu()
+    }
+
+    $('prizeInput').onchange=async(e)=>{
+      const user=auth.currentUser; if(!user) return showNotification('Please sign in.');
+      const file=e.target.files[0]; if(!file) return;
+      const ext=file.name.split('.').pop().toLowerCase();
+      if(!['csv','xlsx'].includes(ext)) return showNotification('Upload .csv or .xlsx');
+      let parsed=[];
+      if(ext==='xlsx'){
+        const arrBuf=await file.arrayBuffer();
+        const wb=XLSX.read(new Uint8Array(arrBuf),{type:'array'});
+        const sheet=wb.Sheets[wb.SheetNames[0]];
+        const rows=XLSX.utils.sheet_to_json(sheet,{header:['prize','winners','value']});
+        parsed = rows.map(r=>({ prize:r.prize, winners:parseInt(r.winners,10), value:r.value?Number(r.value):null })).filter(p=>p && p.prize && Number.isFinite(p.winners) && p.winners>=1)
+      } else {
+        const txt=await readFileAsText(file);
+        const lines=txt.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+        if(!lines.length) return showNotification('Empty CSV.');
+        const headers=lines[0].toLowerCase().split(',').map(h=>h.trim());
+        if(headers[0]!=='prize'||headers[1]!=='winners') return showNotification('Expected headers: Prize,Winners,Value');
+        parsed = lines.slice(1).map(line=>{ const [prize,winners,value] = line.split(',').map(s=>s.trim()); return { prize, winners:parseInt(winners,10), value:value?Number(value):null } }).filter(p=>p.prize && Number.isFinite(p.winners) && p.winners>=1)
+      }
+      await saveState(user.uid,{ prizes:parsed, currentPrizeIndex:0, isPrizesLoaded:true, lastWinners:[], lastPrize:null, isShowingResult:false });
+      await logAction(user.uid,'uploadPrizes',{ file:file.name, count:parsed.length });
+      showNotification(`Loaded ${parsed.length} prizes!`);
+      toggleMenu()
+    }
+
+    $('showHistoryBtn').onclick=async()=>{
+      $('mainPage').classList.remove('active');
+      $('historyPage').classList.add('active');
+      $('inputArea').classList.remove('active');
+      state.isShowingResult=false;
+      updateRemainingInfo();
+      const user=auth.currentUser; if(!user) return;
+      const qy=query(userActionsCol(user.uid),orderBy('at','asc'));
+      const rows=[];
+      const snap=await getDocs(qy);
+      snap.forEach(d=>{ const x=d.data(); if(x.action==='drawWinners'){ const ts = x.at && typeof x.at.toDate==='function' ? x.at.toDate().toLocaleString() : ''; rows.push({ ts, prize:x.details&&x.details.prize||'', winners:(x.details&&x.details.winners||[]).join(', ') }) } });
+      let html='<h2>Draw History</h2>';
+      if(rows.length===0){ html+='<p>No draws recorded yet.</p>' } else { html+=`<table><tr><th>Timestamp</th><th>Prize</th><th>Winners</th></tr>${rows.map(r=>`<tr><td>${r.ts}</td><td>${r.prize}</td><td>${r.winners}</td></tr>`).join('')}</table>` }
+      $('historyContent').innerHTML=html;
+      await logAction(user.uid,'viewHistory',{});
+      toggleMenu()
+    }
+
+    $('backToMainBtn').onclick=async()=>{
+      $('historyPage').classList.remove('active');
+      $('mainPage').classList.add('active');
+      $('inputArea').classList.add('active');
+      state.isShowingResult=false; updateRemainingInfo();
+      const user=auth.currentUser; if(user) await logAction(user.uid,'backToMain',{})
+    }
+
+    $('changeEventNameBtn').onclick=async()=>{
+      const user=auth.currentUser; if(!user) return;
+      const newName=prompt('Enter new event name:',state.eventName);
+      if(newName){ await saveState(user.uid,{ eventName:newName }); await logAction(user.uid,'updateEventName',{ name:newName }); showNotification('Event name updated!') }
+      toggleMenu()
+    }
+
+    $('resetAllBtn').onclick = async () => {
+      const user = auth.currentUser; if (!user) return showNotification('Please sign in.');
+      if (!confirm('Reset everything? This will remove attendees, prizes, drawn history, and logs.')) return;
+
+      try {
+        await deleteCollectionBatched(userActionsCol(user.uid));
+        await setDoc(userStateRef(user.uid), {
+          ...DEFAULT_STATE,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+        state = { ...DEFAULT_STATE };
+        renderAll();
+        showNotification('All data removed.');
+        toggleMenu();
+      } catch (e) {
+        showNotification('Reset failed: ' + (e?.message || e));
+      }
+    };
+
+    $('soundToggle').onclick=async()=>{ const user=auth.currentUser; if(!user) return; await saveState(user.uid,{ isSoundEnabled:!state.isSoundEnabled }); await logAction(user.uid,'toggleSound',{ soundEnabled:state.isSoundEnabled }) }
+    $('volumeSlider').onchange=async(e)=>{ const user=auth.currentUser; if(!user) return; const v=Number(e.target.value); $('drumroll').volume=v; $('applause').volume=v; await saveState(user.uid,{ volume:v }); await logAction(user.uid,'adjustVolume',{ volume:v }) }
+
+    $('downloadWinnersBtn').onclick=()=>{ if(state.drawn.length===0) return showNotification('No winners drawn yet.'); const csv = 'Name,Prize,Timestamp\n' + state.drawn.map(w=>`"${w.name}","${w.prize}","${w.timestamp}"`).join('\n'); downloadFile('winners.csv',csv) }
+    $('downloadRemainingBtn').onclick=()=>{ if(state.attendees.length===0) return showNotification('No remaining attendees.'); const csv = 'Name\n' + state.attendees.map(n=>`"${n}"`).join('\n'); downloadFile('remaining.csv',csv) }
+    $('downloadTemplatesBtn').onclick=()=> downloadTemplates()
+
+    function downloadFile(filename,content){
+      const type = filename.endsWith('.xlsx') ? 'application/octet-stream' : filename.endsWith('.csv') ? 'text/csv;charset=utf-8' : 'text/plain;charset=utf-8'
+      const blob = content instanceof Blob ? content : new Blob([content],{type})
+      const url=URL.createObjectURL(blob)
+      const a=document.createElement('a'); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url)
+    }
+
+    function downloadTemplates(){
+      const attendeeTemplate='Name\nJohn Doe\nJane Smith\n'
+      const prizeTemplate='Prize,Winners,Value\nGrand Prize,1,1000\nSecond Prize,2,500\n'
+      downloadFile('attendees_template.csv',attendeeTemplate)
+      downloadFile('prizes_template.csv',prizeTemplate)
+      const attendeeWB=XLSX.utils.book_new();
+      const attendeeWS=XLSX.utils.json_to_sheet([{Name:'John Doe'},{Name:'Jane Smith'}]);
+      XLSX.utils.book_append_sheet(attendeeWB,attendeeWS,'Attendees');
+      const prizeWB=XLSX.utils.book_new();
+      const prizeWS=XLSX.utils.json_to_sheet([{Prize:'Grand Prize',Winners:1,Value:1000},{Prize:'Second Prize',Winners:2,Value:500}]);
+      XLSX.utils.book_append_sheet(prizeWB,prizeWS,'Prizes');
+      const aX=XLSX.write(attendeeWB,{bookType:'xlsx',type:'array'});
+      const pX=XLSX.write(prizeWB,{bookType:'xlsx',type:'array'});
+      downloadFile('attendees_template.xlsx',new Blob([aX],{type:'application/octet-stream'}))
+      downloadFile('prizes_template.xlsx',new Blob([pX],{type:'application/octet-stream'}))
+      showNotification('Template files downloaded!')
+    }
+
+    document.addEventListener('keydown',(e)=>{
+      if(e.key==='Enter'||e.key===' '){
+        const a=document.activeElement
+        if(a&&a.id==='confirmButton') $('confirmButton').click();
+        if(a&&a.id==='drawButton') $('drawButton').click();
+        if(a&&a.id==='menuButton') toggleMenu()
+      }
+    })
+
+    // ======== Prize Manager (Add/Edit/Delete/Reorder) ========
+
+    function openPrizeManager(){
+      if(!state.isPrizesLoaded){ showNotification('No prizes loaded yet.'); return; }
+      $('prizeManagerOverlay').style.display='flex';
+      renderPrizeManager();
+    }
+    function closePrizeManager(){ $('prizeManagerOverlay').style.display='none'; }
+
+    function renderPrizeManager(){
+      const lockedUntil = state.currentPrizeIndex; // rows < this are drawn & locked
+      const esc = (s)=> String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+
+      const rowsHtml = state.prizes.map((p, idx) => {
+        const locked = idx < lockedUntil;
+        const disUp   = idx <= lockedUntil;
+        const disDown = idx < lockedUntil || idx === state.prizes.length - 1;
+        return `
+          <div class="pm-row ${locked ? 'locked' : ''}" data-idx="${idx}">
+            <input id="pm-name-${idx}" placeholder="Prize" value="${esc(p.prize)}" ${locked?'disabled':''}>
+            <input id="pm-win-${idx}" type="number" min="1" step="1" placeholder="Winners" value="${Number(p.winners)||1}" ${locked?'disabled':''}>
+            <input id="pm-val-${idx}" type="number" step="1" placeholder="Value (optional)" value="${p.value ?? ''}" ${locked?'disabled':''}>
+            <div class="pm-actions">
+              <button class="menu-item" data-act="save" ${locked?'disabled':''}>💾 Save</button>
+              <button class="menu-item" data-act="up"   ${disUp?'disabled':''}>↑</button>
+              <button class="menu-item" data-act="down" ${disDown?'disabled':''}>↓</button>
+              <button class="menu-item ghost" data-act="del" ${locked?'disabled':''}>🗑️ Delete</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      $('prizeManager').innerHTML = `
+        <h2>Manage Prizes</h2>
+        <div class="pm-note">Prizes already drawn (rows &lt; ${lockedUntil+1}) are locked. You can add, edit, delete, or reorder upcoming prizes.</div>
+
+        <div class="pm-toolbar">
+          <input id="pm-new-name" placeholder="Prize name" />
+          <input id="pm-new-win" type="number" min="1" step="1" placeholder="Winners" />
+          <input id="pm-new-val" type="number" step="1" placeholder="Value (optional)" />
+          <button id="pm-add-next" class="menu-item">➕ Add as Next</button>
+          <button id="pm-add-end"  class="menu-item ghost">➕ Add to End</button>
+        </div>
+
+        <div class="pm-divider"></div>
+        ${rowsHtml || '<p style="opacity:.8">No prizes configured.</p>'}
+        <div class="pm-divider"></div>
+
+        <div style="display:flex;justify-content:flex-end;gap:8px">
+          <button id="pm-close" class="menu-item ghost">Close</button>
+        </div>
+      `;
+
+      $('pm-close').onclick = closePrizeManager;
+      $('pm-add-next').onclick = () => addPrize('next');
+      $('pm-add-end').onclick  = () => addPrize('end');
+
+      // delegate row actions; overwrite handler each render to avoid stacking
+      $('prizeManager').onclick = async (e) => {
+        const btn = e.target.closest('button[data-act]');
+        if(!btn) return;
+        const row = e.target.closest('.pm-row');
+        if(!row) return;
+        const idx = Number(row.dataset.idx);
+        const act = btn.dataset.act;
+        if(act === 'save') return savePrizeRow(idx);
+        if(act === 'del')  return deletePrizeRow(idx);
+        if(act === 'up')   return movePrize(idx, -1);
+        if(act === 'down') return movePrize(idx, +1);
+      };
+    }
+
+    async function persistPrizes(newPrizes){
+      const user = auth.currentUser; if(!user) return showNotification('Please sign in.');
+      await saveState(user.uid, { prizes: newPrizes });
+      showNotification('Prize list updated.');
+      renderPrizeManager();
+    }
+
+    function readNewPrizeInputs(){
+      const name = $('pm-new-name').value.trim();
+      const winners = parseInt(($('pm-new-win').value||'').trim(), 10);
+      const valRaw = $('pm-new-val').value.trim();
+      const value = valRaw === '' ? null : Number(valRaw);
+      return { name, winners, value };
+    }
+
+    async function addPrize(where){
+      const { name, winners, value } = readNewPrizeInputs();
+      if(!name) return showNotification('Enter prize name.');
+      if(!Number.isInteger(winners) || winners < 1) return showNotification('Winners must be ≥ 1.');
+      const insertAt = (where === 'next') ? state.currentPrizeIndex : state.prizes.length;
+      const newPrizes = state.prizes.slice();
+      newPrizes.splice(insertAt, 0, { prize:name, winners, value: (value ?? null) });
+      await persistPrizes(newPrizes);
+      $('pm-new-name').value = ''; $('pm-new-win').value=''; $('pm-new-val').value='';
+    }
+
+    async function savePrizeRow(idx){
+      if(idx < state.currentPrizeIndex) return; // locked
+      const name = ($('pm-name-'+idx).value||'').trim();
+      const winners = parseInt(($('pm-win-'+idx).value||'').trim(), 10);
+      const valRaw = $('pm-val-'+idx).value.trim();
+      const value = valRaw === '' ? null : Number(valRaw);
+      if(!name) return showNotification('Enter prize name.');
+      if(!Number.isInteger(winners) || winners < 1) return showNotification('Winners must be ≥ 1.');
+      const newPrizes = state.prizes.slice();
+      newPrizes[idx] = { prize:name, winners, value };
+      await persistPrizes(newPrizes);
+    }
+
+    async function deletePrizeRow(idx){
+      if(idx < state.currentPrizeIndex) return; // locked
+      const newPrizes = state.prizes.slice();
+      newPrizes.splice(idx, 1);
+      await persistPrizes(newPrizes);
+    }
+
+    async function movePrize(idx, dir){
+      const newIdx = idx + dir;
+      if(newIdx < state.currentPrizeIndex || newIdx < 0 || newIdx >= state.prizes.length) return;
+      if(idx < state.currentPrizeIndex) return;
+      const newPrizes = state.prizes.slice();
+      const [row] = newPrizes.splice(idx,1);
+      newPrizes.splice(newIdx,0,row);
+      await persistPrizes(newPrizes);
+    }
+
+    $('managePrizesBtn').onclick = () => { toggleMenu(); openPrizeManager(); };
+
+    // ======== /Prize Manager ========
+
+    $('inputArea').classList.add('active')
+    renderAll()
+    playVideo(idleVideo,true)
+  </script>
 </body>
-
 </html>
