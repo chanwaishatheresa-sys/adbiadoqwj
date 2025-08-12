@@ -15,7 +15,7 @@
     body{margin:0;color:var(--fg);background:var(--bg);font-family:'Roboto',sans-serif;text-align:center;overflow:hidden}
 
     #video-container{position:fixed;inset:0;z-index:-2}
-    #video-container video{width:100%;height:100%;object-fit:cover;opacity:.7}
+    #video-container video{width:100%;height:100%;object-fit:cover;opacity:.5}
 
     .overlay{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:2rem;z-index:1}
     h1{font-family:'Playfair Display',serif;font-weight:700;margin:0 0 1.5rem;font-size:clamp(2rem,6vw,5rem)}
@@ -322,7 +322,8 @@
         $('mainPage').classList.add('active')
         $('drawButton').disabled=true
         renderAll()
-        playVideo(state.isShowingResult ? winnerVideo : idleVideo, !state.isShowingResult)
+        playVideo(state.isShowingResult ? winnerVideo : idleVideo,
+                  state.isShowingResult ? true : !state.isShowingResult)
       } else {
         show($('authOverlay'))
         hide($('signOutBtn'))
@@ -436,7 +437,7 @@
       state.isShowingResult = true; // keep draw disabled & hold banner on previous prize
       updatePrizeBanner();
       updateRemainingInfo()
-      playVideo(winnerVideo,false)
+      playVideo(winnerVideo,true)
       if(state.isSoundEnabled){
         confetti({ particleCount:150, spread:90, origin:{ y:.6 } })
         const a=$('applause'); a.currentTime=0; a.play().catch(()=>{})
